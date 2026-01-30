@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaboon Viper: Sahara Hunt</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Main Menu -->
+        <div id="main-menu" class="menu">
+            <div class="menu-content">
+                <h1 class="game-title">GABOON VIPER</h1>
+                <h2 class="game-subtitle">Sahara Hunt</h2>
+                <div class="menu-buttons">
+                    <button id="btn-start">START GAME</button>
+                    <button id="btn-select-level">SELECT LEVEL</button>
+                    <button id="btn-endless">ENDLESS MODE</button>
+                    <button id="btn-high-scores">HIGH SCORES</button>
+                    <button id="btn-settings">SETTINGS</button>
+                    <button id="btn-how-to-play">HOW TO PLAY</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Level Select Menu -->
+        <div id="level-select-menu" class="menu hidden">
+            <div class="menu-content">
+                <h2>SELECT LEVEL</h2>
+                <div id="level-buttons" class="level-grid"></div>
+                <button id="btn-back-from-levels" class="back-btn">BACK</button>
+            </div>
+        </div>
+
+        <!-- Settings Menu -->
+        <div id="settings-menu" class="menu hidden">
+            <div class="menu-content">
+                <h2>SETTINGS</h2>
+                <div class="settings-group">
+                    <label>Sound Effects</label>
+                    <input type="range" id="sfx-volume" min="0" max="100" value="70">
+                </div>
+                <div class="settings-group">
+                    <label>Music</label>
+                    <input type="range" id="music-volume" min="0" max="100" value="50">
+                </div>
+                <div class="settings-group">
+                    <label>Difficulty</label>
+                    <select id="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label>Show Grid</label>
+                    <input type="checkbox" id="show-grid">
+                </div>
+                <button id="btn-back-from-settings" class="back-btn">BACK</button>
+            </div>
+        </div>
+
+        <!-- How To Play -->
+        <div id="how-to-play-menu" class="menu hidden">
+            <div class="menu-content">
+                <h2>HOW TO PLAY</h2>
+                <div class="instructions">
+                    <p><strong>Arrow Keys:</strong> Move the viper</p>
+                    <p><strong>M Key:</strong> Toggle mouse follow mode</p>
+                    <p><strong>P Key:</strong> Pause game</p>
+                    <p><strong>ESC:</strong> Return to menu</p>
+                    <hr>
+                    <p>Hunt prey to grow longer and score points!</p>
+                    <p>Avoid obstacles and your own tail.</p>
+                    <p>Collect power-ups for special abilities!</p>
+                </div>
+                <button id="btn-back-from-help" class="back-btn">BACK</button>
+            </div>
+        </div>
+
+        <!-- High Scores -->
+        <div id="high-scores-menu" class="menu hidden">
+            <div class="menu-content">
+                <h2>HIGH SCORES</h2>
+                <div id="high-scores-list" class="scores-list"></div>
+                <button id="btn-back-from-scores" class="back-btn">BACK</button>
+            </div>
+        </div>
+
+        <!-- Game HUD -->
+        <div id="game-hud" class="hidden">
+            <div class="hud-top">
+                <span id="hud-score">Score: 0</span>
+                <span id="hud-high">High: 0</span>
+                <span id="hud-level">Level: 1</span>
+            </div>
+            <div id="hud-powerup" class="hidden">
+                <span id="powerup-icon"></span>
+                <span id="powerup-timer"></span>
+            </div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Controls Info -->
+        <div id="controls-info" class="hidden">
+            <span>Controls: Arrows</span>
+            <span id="mouse-mode-indicator">[M] Mouse Mode: OFF</span>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pause-menu" class="menu hidden">
+            <div class="menu-content">
+                <h2>PAUSED</h2>
+                <button id="btn-resume">RESUME</button>
+                <button id="btn-restart">RESTART LEVEL</button>
+                <button id="btn-pause-settings">SETTINGS</button>
+                <button id="btn-quit">QUIT TO MENU</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-menu" class="menu hidden">
+            <div class="menu-content">
+                <h2 id="game-over-title">GAME OVER</h2>
+                <div class="final-stats">
+                    <p>Final Score: <span id="final-score">0</span></p>
+                    <p>High Score: <span id="final-high">0</span></p>
+                    <p>Prey Caught: <span id="prey-caught">0</span></p>
+                </div>
+                <button id="btn-retry">RETRY</button>
+                <button id="btn-next-level" class="hidden">NEXT LEVEL</button>
+                <button id="btn-game-over-menu">MAIN MENU</button>
+            </div>
+        </div>
+
+        <!-- Level Complete Screen -->
+        <div id="level-complete-menu" class="menu hidden">
+            <div class="menu-content">
+                <h2>LEVEL COMPLETE!</h2>
+                <div class="final-stats">
+                    <p>Score: <span id="level-score">0</span></p>
+                    <p>Level Bonus: <span id="level-bonus">0</span></p>
+                    <p>Total: <span id="level-total">0</span></p>
+                </div>
+                <button id="btn-next">NEXT LEVEL</button>
+                <button id="btn-level-menu">MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/levels.js"></script>
+    <script src="js/snake.js"></script>
+    <script src="js/food.js"></script>
+    <script src="js/powerups.js"></script>
+    <script src="js/obstacles.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
