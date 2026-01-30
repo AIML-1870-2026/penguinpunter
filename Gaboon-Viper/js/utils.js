@@ -122,6 +122,12 @@ const Colors = {
         accent: '#4A3520',
         pattern: '#654321'
     },
+    // Black Mamba - dark gray/olive with coffin-shaped head
+    mamba: {
+        primary: '#2d2d2d',
+        secondary: '#454545',
+        accent: '#1a1a1a'
+    },
     ui: {
         gold: '#DAA520',
         brown: '#4A3520',

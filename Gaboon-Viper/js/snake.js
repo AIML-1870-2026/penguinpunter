@@ -170,15 +170,31 @@ class Snake {
         ctx.fillStyle = colors.primary;
 
         if (this.isAI) {
-            // Black Mamba - sleeker, more angular head
+            // Black Mamba - sleeker, more angular head with border
+            // Draw black outline first
+            ctx.fillStyle = '#000';
             ctx.beginPath();
             ctx.moveTo(cx + this.direction.x * size/2, cy + this.direction.y * size/2);
             if (this.direction.x !== 0) {
-                ctx.lineTo(cx - this.direction.x * size/2, cy - size/4);
-                ctx.lineTo(cx - this.direction.x * size/2, cy + size/4);
+                ctx.lineTo(cx - this.direction.x * size/2, cy - size/3);
+                ctx.lineTo(cx - this.direction.x * size/2, cy + size/3);
             } else {
-                ctx.lineTo(cx - size/4, cy - this.direction.y * size/2);
-                ctx.lineTo(cx + size/4, cy - this.direction.y * size/2);
+                ctx.lineTo(cx - size/3, cy - this.direction.y * size/2);
+                ctx.lineTo(cx + size/3, cy - this.direction.y * size/2);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Inner head
+            ctx.fillStyle = colors.primary;
+            ctx.beginPath();
+            ctx.moveTo(cx + this.direction.x * size/2.5, cy + this.direction.y * size/2.5);
+            if (this.direction.x !== 0) {
+                ctx.lineTo(cx - this.direction.x * size/2.5, cy - size/4);
+                ctx.lineTo(cx - this.direction.x * size/2.5, cy + size/4);
+            } else {
+                ctx.lineTo(cx - size/4, cy - this.direction.y * size/2.5);
+                ctx.lineTo(cx + size/4, cy - this.direction.y * size/2.5);
             }
             ctx.closePath();
             ctx.fill();
@@ -222,9 +238,11 @@ class Snake {
         const isEven = index % 2 === 0;
 
         if (this.isAI) {
-            // Black Mamba - solid dark with slight gradient feel
+            // Black Mamba - solid dark with outline for visibility
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x + 1, y + 1, size - 2, size - 2);
             ctx.fillStyle = isEven ? colors.primary : colors.secondary;
-            ctx.fillRect(x + 2, y + 2, size - 4, size - 4);
+            ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
         } else {
             // Gaboon Viper - patterned
             ctx.fillStyle = isEven ? colors.primary : colors.secondary;
@@ -377,10 +395,3 @@ class AISnake extends Snake {
         this.targetUpdateInterval = Math.max(200, 600 - level * 50);
     }
 }
-
-// Add Black Mamba colors to Colors object
-Colors.mamba = {
-    primary: '#1a1a1a',
-    secondary: '#333333',
-    accent: '#4a4a4a'
-};
