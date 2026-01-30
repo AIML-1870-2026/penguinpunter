@@ -9,7 +9,7 @@ const Levels = {
             description: 'Open desert with minimal obstacles',
             targetScore: 100,
             timeLimit: null,
-            speed: 150, // ms per tick (higher = slower)
+            speed: 100, // ms per tick (higher = slower)
             speedModifiers: { easy: 1.3, normal: 1, hard: 0.7 },
             preyTypes: ['mouse', 'jerboa'],
             powerUps: [],
@@ -27,7 +27,7 @@ const Levels = {
             description: 'Desert area with more rock formations',
             targetScore: 200,
             timeLimit: 120, // 2 minutes
-            speed: 130,
+            speed: 95,
             speedModifiers: { easy: 1.3, normal: 1, hard: 0.7 },
             preyTypes: ['mouse', 'jerboa', 'lizard', 'hare'],
             powerUps: ['speed'],
@@ -48,7 +48,7 @@ const Levels = {
             description: 'Near a desert oasis with vegetation',
             targetScore: 350,
             goldenScarabs: 3,
-            speed: 120,
+            speed: 90,
             speedModifiers: { easy: 1.3, normal: 1, hard: 0.7 },
             preyTypes: ['mouse', 'jerboa', 'lizard', 'hare', 'fennec'],
             powerUps: ['speed', 'shield'],
@@ -69,7 +69,7 @@ const Levels = {
             name: 'Bone Valley',
             description: 'Area littered with ancient remains',
             targetScore: 500,
-            speed: 100,
+            speed: 85,
             speedModifiers: { easy: 1.3, normal: 1, hard: 0.7 },
             preyTypes: ['mouse', 'jerboa', 'lizard', 'hare', 'fennec', 'golden'],
             powerUps: ['speed', 'shield', 'ghost'],
@@ -101,7 +101,7 @@ const Levels = {
             description: 'Open desert during a sandstorm',
             targetScore: 750,
             timeLimit: 180, // 3 minutes
-            speed: 90,
+            speed: 80,
             speedModifiers: { easy: 1.3, normal: 1, hard: 0.7 },
             preyTypes: ['mouse', 'jerboa', 'lizard', 'hare', 'fennec', 'golden'],
             powerUps: ['speed', 'shield', 'ghost', 'magnet'],
@@ -123,7 +123,7 @@ const Levels = {
             name: 'The Gauntlet',
             description: 'Canyon passage through mountains',
             targetScore: 1000,
-            speed: 80,
+            speed: 70,
             speedModifiers: { easy: 1.2, normal: 1, hard: 0.8 },
             preyTypes: ['mouse', 'jerboa', 'lizard', 'hare', 'fennec', 'golden'],
             powerUps: ['speed', 'slow', 'shield', 'multiplier', 'shrink', 'ghost', 'magnet'],
@@ -157,8 +157,8 @@ const Levels = {
     endless: {
         name: 'Endless Mode',
         description: 'Survive as long as you can',
-        startSpeed: 120,
-        minSpeed: 60,
+        startSpeed: 90,
+        minSpeed: 50,
         speedIncreaseInterval: 30, // seconds
         speedIncrease: 5, // ms decrease per interval
         preyTypes: ['mouse', 'jerboa', 'lizard', 'hare', 'fennec', 'golden'],

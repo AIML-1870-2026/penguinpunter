@@ -3,7 +3,7 @@
 class Game {
     constructor() {
         this.canvas = document.getElementById('game-canvas');
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', { alpha: false });
 
         // Grid settings
         this.cellSize = 20;
@@ -13,6 +13,13 @@ class Game {
         // Canvas size
         this.canvas.width = this.gridWidth * this.cellSize;
         this.canvas.height = this.gridHeight * this.cellSize;
+
+        // Create offscreen canvas for static background
+        this.bgCanvas = document.createElement('canvas');
+        this.bgCanvas.width = this.canvas.width;
+        this.bgCanvas.height = this.canvas.height;
+        this.bgCtx = this.bgCanvas.getContext('2d');
+        this.bgCached = false;
 
         // Game state
         this.state = 'menu'; // menu, playing, paused, gameOver, levelComplete
@@ -43,6 +50,8 @@ class Game {
 
         // Initialize components
         this.snake = new Snake(this.gridWidth, this.gridHeight, this.cellSize);
+        this.aiSnake = new AISnake(this.gridWidth, this.gridHeight, this.cellSize);
+        this.aiEnabled = true;
         this.foodManager = new FoodManager(this.gridWidth, this.gridHeight, this.cellSize);
         this.powerUpManager = new PowerUpManager(this.gridWidth, this.gridHeight, this.cellSize);
         this.obstacleManager = new ObstacleManager(this.gridWidth, this.gridHeight, this.cellSize);
@@ -152,6 +161,8 @@ class Game {
 
         // Reset components
         this.snake.reset();
+        this.aiSnake.reset();
+        this.aiSnake.setDifficulty(level);
         this.controls.reset();
 
         // Setup food manager
@@ -199,6 +210,8 @@ class Game {
         this.tickInterval = config.startSpeed;
 
         this.snake.reset();
+        this.aiSnake.reset();
+        this.aiSnake.setDifficulty(5); // Harder in endless mode
         this.controls.reset();
 
         this.foodManager.setAvailableTypes(config.preyTypes);
@@ -357,6 +370,11 @@ class Game {
         this.powerUpManager.update(deltaTime, this.snake, this.obstacleManager.getAllObstacles());
         this.obstacleManager.update(deltaTime, this.snake);
 
+        // Update AI snake
+        if (this.aiEnabled && this.aiSnake.alive) {
+            this.aiSnake.updateAI(deltaTime, this.snake, this.foodManager.food, this.obstacleManager.getAllObstacles());
+        }
+
         // Update HUD
         this.ui.updateHUD(this.score, this.highScore, this.isEndlessMode ? 'Endless' : this.currentLevel);
         this.ui.updatePowerUp(this.powerUpManager.getActiveEffect());
@@ -417,6 +435,34 @@ class Game {
         if (caughtPowerUp) {
             this.audio.playPowerUp();
             this.score += 5; // Power-up collection bonus
+        }
+
+        // Update AI snake
+        if (this.aiEnabled && this.aiSnake.alive) {
+            this.aiSnake.update();
+
+            // Check if AI caught food
+            const aiCaughtPrey = this.foodManager.checkCollision(this.aiSnake.head.x, this.aiSnake.head.y);
+            if (aiCaughtPrey) {
+                this.aiSnake.grow(1);
+                this.foodManager.spawn(this.snake, this.obstacleManager.getAllObstacles());
+            }
+
+            // Check if player collided with AI snake body
+            if (this.snake.checkCollisionWithSnake(this.aiSnake)) {
+                if (!this.snake.hasShield) {
+                    this.audio.playCollision();
+                    this.gameOver(false);
+                    return;
+                }
+                this.snake.hasShield = false;
+            }
+
+            // Check if AI collided with player snake body (AI dies)
+            if (this.aiSnake.checkCollisionWithSnake(this.snake)) {
+                this.aiSnake.alive = false;
+                this.score += 100; // Bonus for killing the mamba!
+            }
         }
 
         // Check level complete
@@ -505,12 +551,21 @@ class Game {
         // Draw power-ups
         this.powerUpManager.draw(ctx);
 
-        // Draw snake
+        // Draw AI snake (Black Mamba)
+        if (this.aiEnabled && this.aiSnake.alive) {
+            this.aiSnake.draw(ctx);
+        }
+
+        // Draw player snake
         this.snake.draw(ctx);
     }
 
-    drawBackground() {
-        const ctx = this.ctx;
+    cacheBackground() {
+        const ctx = this.bgCtx;
+
+        // Base sand color
+        ctx.fillStyle = '#D4A574';
+        ctx.fillRect(0, 0, this.bgCanvas.width, this.bgCanvas.height);
 
         // Create subtle sand dune patterns
         ctx.fillStyle = 'rgba(196, 149, 106, 0.3)';
@@ -531,12 +586,21 @@ class Game {
         // Add some scattered dots for texture
         ctx.fillStyle = 'rgba(139, 90, 43, 0.1)';
         for (let i = 0; i < 50; i++) {
-            const x = (i * 17) % this.canvas.width;
-            const y = (i * 23) % this.canvas.height;
+            const x = (i * 17) % this.bgCanvas.width;
+            const y = (i * 23) % this.bgCanvas.height;
             ctx.beginPath();
             ctx.arc(x, y, 2, 0, Math.PI * 2);
             ctx.fill();
         }
+
+        this.bgCached = true;
+    }
+
+    drawBackground() {
+        if (!this.bgCached) {
+            this.cacheBackground();
+        }
+        this.ctx.drawImage(this.bgCanvas, 0, 0);
     }
 
     drawGrid() {
