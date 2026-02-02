@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            background-color: #e6e6fa;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .text-container {
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        p {
+            font-size: 1.5rem;
+            color: #333;
+            margin: 0;
+        }
+
+        .signature {
+            font-size: 1.2rem;
+            color: #555;
+            margin-top: 0.5rem;
+        }
+
+
+        .snake {
+            position: absolute;
+            width: 200px;
+            height: 20px;
+            background: linear-gradient(90deg, #2d5016, #4a7c23, #2d5016);
+            border-radius: 10px;
+            animation: slither 15s infinite linear;
+            opacity: 0.7;
+        }
+
+        .snake::before {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 5px;
+            width: 0;
+            height: 0;
+            border-left: 15px solid #2d5016;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+
+        .snake::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 7px;
+            width: 4px;
+            height: 4px;
+            background: #ff0000;
+            border-radius: 50%;
+        }
+
+        .snake:nth-child(1) {
+            top: 10%;
+            animation-duration: 10s;
+            animation-delay: 0s;
+        }
+
+        .snake:nth-child(2) {
+            top: 30%;
+            animation-duration: 13s;
+            animation-delay: 2s;
+            background: linear-gradient(90deg, #1a3d0a, #3a6c1a, #1a3d0a);
+        }
+
+        .snake:nth-child(3) {
+            top: 50%;
+            animation-duration: 11s;
+            animation-delay: 4s;
+        }
+
+        .snake:nth-child(4) {
+            top: 70%;
+            animation-duration: 14s;
+            animation-delay: 1s;
+            background: linear-gradient(90deg, #3d5c1a, #5a8c2a, #3d5c1a);
+        }
+
+        .snake:nth-child(5) {
+            top: 85%;
+            animation-duration: 12s;
+            animation-delay: 5s;
+        }
+
+        .snake:nth-child(6) {
+            top: 20%;
+            animation-duration: 9s;
+            animation-delay: 3s;
+            background: linear-gradient(90deg, #8b4513, #a0522d, #8b4513);
+        }
+
+        .snake:nth-child(6)::before {
+            border-left-color: #8b4513;
+        }
+
+        .snake:nth-child(7) {
+            top: 40%;
+            animation-duration: 11s;
+            animation-delay: 6s;
+            background: linear-gradient(90deg, #556b2f, #6b8e23, #556b2f);
+        }
+
+        .snake:nth-child(7)::before {
+            border-left-color: #556b2f;
+        }
+
+        .snake:nth-child(8) {
+            top: 60%;
+            animation-duration: 13s;
+            animation-delay: 1s;
+            background: linear-gradient(90deg, #2f4f2f, #3cb371, #2f4f2f);
+        }
+
+        .snake:nth-child(8)::before {
+            border-left-color: #2f4f2f;
+        }
+
+        .snake:nth-child(9) {
+            top: 15%;
+            animation-duration: 10s;
+            animation-delay: 7s;
+            background: linear-gradient(90deg, #4b5320, #6b7d3e, #4b5320);
+        }
+
+        .snake:nth-child(9)::before {
+            border-left-color: #4b5320;
+        }
+
+        .snake:nth-child(10) {
+            top: 75%;
+            animation-duration: 12s;
+            animation-delay: 4s;
+            background: linear-gradient(90deg, #228b22, #32cd32, #228b22);
+        }
+
+        .snake:nth-child(10)::before {
+            border-left-color: #228b22;
+        }
+
+        .cupcake {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            z-index: 1;
+        }
+
+        .cupcake-wrapper {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 40px;
+            background: linear-gradient(to bottom, #d4a574, #c49463);
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+        }
+
+        .cupcake-wrapper::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 5px,
+                rgba(160, 82, 45, 0.3) 5px,
+                rgba(160, 82, 45, 0.3) 8px
+            );
+        }
+
+        .cupcake-frosting {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 55px;
+            height: 35px;
+            background: linear-gradient(to bottom, #ffb6c1, #ff69b4);
+            border-radius: 50% 50% 20% 20%;
+        }
+
+        .cupcake-frosting::before {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 25px;
+            background: linear-gradient(to bottom, #ffe4e1, #ffb6c1);
+            border-radius: 50%;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .cupcake-cherry {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle at 30% 30%, #ff0000, #cc0000);
+            border-radius: 50%;
+        }
+
+        .cupcake-cherry::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 8px;
+            background: #654321;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .cupcake:nth-child(1) { left: 8%; bottom: 15%; }
+        .cupcake:nth-child(2) { left: 22%; bottom: 25%; transform: scale(0.9); }
+        .cupcake:nth-child(3) { left: 40%; bottom: 10%; transform: scale(1.1); }
+        .cupcake:nth-child(4) { right: 8%; bottom: 20%; }
+        .cupcake:nth-child(5) { right: 25%; bottom: 12%; transform: scale(0.85); }
+        .cupcake:nth-child(6) { right: 40%; bottom: 28%; transform: scale(0.95); }
+
+        .cupcake:nth-child(2) .cupcake-frosting {
+            background: linear-gradient(to bottom, #e6e6fa, #9370db);
+        }
+
+        .cupcake:nth-child(2) .cupcake-frosting::before {
+            background: linear-gradient(to bottom, #f0e6ff, #e6e6fa);
+        }
+
+        .cupcake:nth-child(3) .cupcake-frosting {
+            background: linear-gradient(to bottom, #87ceeb, #4682b4);
+        }
+
+        .cupcake:nth-child(3) .cupcake-frosting::before {
+            background: linear-gradient(to bottom, #b0e0e6, #87ceeb);
+        }
+
+        .cupcake:nth-child(4) .cupcake-frosting {
+            background: linear-gradient(to bottom, #fff8dc, #ffd700);
+        }
+
+        .cupcake:nth-child(4) .cupcake-frosting::before {
+            background: linear-gradient(to bottom, #fffacd, #fff8dc);
+        }
+
+        .cupcake:nth-child(5) .cupcake-frosting {
+            background: linear-gradient(to bottom, #ffdab9, #ff8c00);
+        }
+
+        .cupcake:nth-child(5) .cupcake-frosting::before {
+            background: linear-gradient(to bottom, #ffe4b5, #ffdab9);
+        }
+
+        .cupcake:nth-child(6) .cupcake-frosting {
+            background: linear-gradient(to bottom, #98fb98, #32cd32);
+        }
+
+        .cupcake:nth-child(6) .cupcake-frosting::before {
+            background: linear-gradient(to bottom, #e0ffe0, #98fb98);
+        }
+
+        .slime-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 8;
+            pointer-events: none;
+        }
+
+        .slime {
+            position: absolute;
+            top: 0;
+            width: 40px;
+            background: linear-gradient(to bottom, #7FFF00, #90EE90);
+            border-radius: 0 0 20px 20px;
+            animation: drip 4s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        .slime::before {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #7FFF00, #90EE90);
+            border-radius: 50%;
+            animation: drop 4s ease-in-out infinite;
+        }
+
+        .slime:nth-child(1) {
+            left: 10%;
+            animation-duration: 5s;
+            animation-delay: 0s;
+        }
+
+        .slime:nth-child(2) {
+            left: 25%;
+            animation-duration: 4.5s;
+            animation-delay: 1s;
+        }
+
+        .slime:nth-child(3) {
+            left: 40%;
+            animation-duration: 5.5s;
+            animation-delay: 2s;
+        }
+
+        .slime:nth-child(4) {
+            left: 55%;
+            animation-duration: 4s;
+            animation-delay: 0.5s;
+        }
+
+        .slime:nth-child(5) {
+            left: 70%;
+            animation-duration: 6s;
+            animation-delay: 1.5s;
+        }
+
+        .slime:nth-child(6) {
+            left: 85%;
+            animation-duration: 4.8s;
+            animation-delay: 2.5s;
+        }
+
+        @keyframes drip {
+            0% {
+                height: 20px;
+            }
+            50% {
+                height: 150px;
+            }
+            100% {
+                height: 20px;
+            }
+        }
+
+        @keyframes drop {
+            0%, 40% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(0);
+            }
+            50% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(50px);
+            }
+        }
+
+        @keyframes slither {
+            0% {
+                left: -250px;
+                transform: translateY(0) rotate(0deg) scaleX(1);
+            }
+            10% {
+                transform: translateY(-15px) rotate(8deg) scaleX(0.95);
+            }
+            20% {
+                transform: translateY(-25px) rotate(12deg) scaleX(1.05);
+            }
+            30% {
+                transform: translateY(-15px) rotate(5deg) scaleX(0.98);
+            }
+            40% {
+                transform: translateY(0) rotate(-3deg) scaleX(1.02);
+            }
+            50% {
+                transform: translateY(10px) rotate(-10deg) scaleX(0.96);
+            }
+            60% {
+                transform: translateY(20px) rotate(-15deg) scaleX(1.04);
+            }
+            70% {
+                transform: translateY(15px) rotate(-8deg) scaleX(0.99);
+            }
+            80% {
+                transform: translateY(5px) rotate(2deg) scaleX(1.01);
+            }
+            90% {
+                transform: translateY(-10px) rotate(6deg) scaleX(0.97);
+            }
+            100% {
+                left: 100vw;
+                transform: translateY(0) rotate(0deg) scaleX(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slime dripping from top -->
+    <div class="slime-container">
+        <div class="slime"></div>
+        <div class="slime"></div>
+        <div class="slime"></div>
+        <div class="slime"></div>
+        <div class="slime"></div>
+        <div class="slime"></div>
+    </div>
+
+    <!-- Cupcakes -->
+    <div class="cupcake">
+        <div class="cupcake-wrapper"></div>
+        <div class="cupcake-frosting">
+            <div class="cupcake-cherry"></div>
+        </div>
+    </div>
+    <div class="cupcake">
+        <div class="cupcake-wrapper"></div>
+        <div class="cupcake-frosting">
+            <div class="cupcake-cherry"></div>
+        </div>
+    </div>
+    <div class="cupcake">
+        <div class="cupcake-wrapper"></div>
+        <div class="cupcake-frosting">
+            <div class="cupcake-cherry"></div>
+        </div>
+    </div>
+    <div class="cupcake">
+        <div class="cupcake-wrapper"></div>
+        <div class="cupcake-frosting">
+            <div class="cupcake-cherry"></div>
+        </div>
+    </div>
+    <div class="cupcake">
+        <div class="cupcake-wrapper"></div>
+        <div class="cupcake-frosting">
+            <div class="cupcake-cherry"></div>
+        </div>
+    </div>
+    <div class="cupcake">
+        <div class="cupcake-wrapper"></div>
+        <div class="cupcake-frosting">
+            <div class="cupcake-cherry"></div>
+        </div>
+    </div>
+
+    <!-- Snakes -->
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+    <div class="snake"></div>
+
+    <!-- Text -->
+    <div class="text-container">
+        <p>HELLO WORLD!!! :) I'M READY TO CODE</p>
+        <p class="signature">-mary euteneuer</p>
+    </div>
+</body>
+</html>
+
