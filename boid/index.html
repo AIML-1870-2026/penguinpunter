@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boids Mini-Lab</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Boids Mini-Lab</h1>
+
+        <div class="main-content">
+            <canvas id="canvas"></canvas>
+
+            <div class="controls-panel">
+                <div class="section">
+                    <h2>Flocking Parameters</h2>
+
+                    <div class="control-group">
+                        <label for="separation">
+                            Separation Weight
+                            <span class="tooltip">How much boids avoid crowding neighbors</span>
+                        </label>
+                        <input type="range" id="separation" min="0" max="3" step="0.1" value="1.5">
+                        <span class="value" id="separation-value">1.5</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="alignment">
+                            Alignment Weight
+                            <span class="tooltip">How much boids align with neighbor directions</span>
+                        </label>
+                        <input type="range" id="alignment" min="0" max="3" step="0.1" value="1.0">
+                        <span class="value" id="alignment-value">1.0</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="cohesion">
+                            Cohesion Weight
+                            <span class="tooltip">How much boids move toward group center</span>
+                        </label>
+                        <input type="range" id="cohesion" min="0" max="3" step="0.1" value="1.0">
+                        <span class="value" id="cohesion-value">1.0</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="radius">
+                            Neighbor Radius
+                            <span class="tooltip">Distance at which boids can see neighbors</span>
+                        </label>
+                        <input type="range" id="radius" min="20" max="150" step="5" value="50">
+                        <span class="value" id="radius-value">50</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="maxSpeed">
+                            Max Speed
+                            <span class="tooltip">Maximum velocity of boids</span>
+                        </label>
+                        <input type="range" id="maxSpeed" min="1" max="8" step="0.5" value="4">
+                        <span class="value" id="maxSpeed-value">4</span>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Presets</h2>
+                    <div class="preset-buttons">
+                        <button id="preset-schooling">Schooling</button>
+                        <button id="preset-chaotic">Chaotic Swarm</button>
+                        <button id="preset-cluster">Tight Cluster</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Instrumentation</h2>
+                    <div class="readouts">
+                        <div class="readout">
+                            <span class="label">FPS:</span>
+                            <span class="stat" id="fps">60</span>
+                        </div>
+                        <div class="readout">
+                            <span class="label">Boid Count:</span>
+                            <span class="stat" id="count">100</span>
+                        </div>
+                        <div class="readout">
+                            <span class="label">Avg Speed:</span>
+                            <span class="stat" id="avgSpeed">0.0</span>
+                        </div>
+                        <div class="readout">
+                            <span class="label">Avg Neighbors:</span>
+                            <span class="stat" id="avgNeighbors">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Controls</h2>
+                    <div class="action-buttons">
+                        <button id="pause">Pause</button>
+                        <button id="reset">Reset</button>
+                    </div>
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="boundaryWrap" checked>
+                            Wrap Boundaries
+                            <span class="tooltip">Unchecked = boids bounce off edges</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="boid.js"></script>
+</body>
+</html>
