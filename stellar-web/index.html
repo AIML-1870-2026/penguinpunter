@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stellar Web - Firework Show</title>
+    <title>Stellar Web - Connected Particle Network</title>
     <style>
         * {
             margin: 0;
@@ -182,49 +182,22 @@
     <canvas id="canvas"></canvas>
 
     <div class="controls">
-        <div class="section-title">Fireworks</div>
+        <div class="section-title">Stellar Network</div>
         <div class="control-group">
-            <label>Launch Rate</label>
-            <input type="range" id="launchRate" min="1" max="20" value="8">
-        </div>
-        <div class="control-group">
-            <label>Explosion Size</label>
-            <input type="range" id="explosionSize" min="20" max="100" value="50">
-        </div>
-        <div class="control-group">
-            <label>Spark Count</label>
-            <input type="range" id="sparkCount" min="20" max="150" value="60">
-        </div>
-        <div class="control-group">
-            <label>Trail Length</label>
-            <input type="range" id="trailLength" min="5" max="30" value="15">
+            <label>Star Count</label>
+            <input type="range" id="starCount" min="50" max="300" value="150">
         </div>
         <div class="control-group">
             <label>Connection Radius</label>
-            <input type="range" id="connectionRadius" min="0" max="200" value="100">
+            <input type="range" id="connectionRadius" min="50" max="300" value="150">
         </div>
-
-        <div class="section-title">Visual Effects</div>
-        <div class="toggle-group">
-            <label>Shooting Stars</label>
-            <label class="toggle">
-                <input type="checkbox" id="shootingStars" checked>
-                <span class="toggle-slider"></span>
-            </label>
+        <div class="control-group">
+            <label>Star Speed</label>
+            <input type="range" id="starSpeed" min="1" max="50" value="10">
         </div>
-        <div class="toggle-group">
-            <label>Multi-burst</label>
-            <label class="toggle">
-                <input type="checkbox" id="multiBurst" checked>
-                <span class="toggle-slider"></span>
-            </label>
-        </div>
-        <div class="toggle-group">
-            <label>Sparkle Trail</label>
-            <label class="toggle">
-                <input type="checkbox" id="sparkleTrail" checked>
-                <span class="toggle-slider"></span>
-            </label>
+        <div class="control-group">
+            <label>Explosion Rate</label>
+            <input type="range" id="explosionRate" min="0" max="20" value="5">
         </div>
 
         <div class="section-title">Color Theme</div>
@@ -249,14 +222,10 @@
 
         // Settings
         let settings = {
-            launchRate: 8,
-            explosionSize: 50,
-            sparkCount: 60,
-            trailLength: 15,
-            connectionRadius: 100,
-            shootingStars: true,
-            multiBurst: true,
-            sparkleTrail: true,
+            starCount: 150,
+            connectionRadius: 150,
+            starSpeed: 10,
+            explosionRate: 5,
             colorTheme: 'rainbow'
         };
 
@@ -308,116 +277,74 @@
             return colors[Math.floor(Math.random() * colors.length)];
         }
 
-        // Launching firework rocket
-        class Rocket {
-            constructor(x) {
-                this.x = x || Math.random() * canvas.width;
-                this.y = canvas.height;
-                this.targetY = canvas.height * (0.15 + Math.random() * 0.4);
-                this.vy = -(8 + Math.random() * 4);
-                this.vx = (Math.random() - 0.5) * 2;
+        // Floating Star particle
+        class Star {
+            constructor(x, y) {
+                this.x = x !== undefined ? x : Math.random() * canvas.width;
+                this.y = y !== undefined ? y : Math.random() * canvas.height;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = (settings.starSpeed / 100) * (0.3 + Math.random() * 0.7);
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
                 this.color = getRandomColor();
-                this.trail = [];
-                this.exploded = false;
-                this.size = 3;
+                this.size = 2 + Math.random() * 2;
+                this.life = 1.0;
             }
 
             update() {
-                // Add to trail
-                if (settings.sparkleTrail) {
-                    this.trail.push({
-                        x: this.x,
-                        y: this.y,
-                        life: 1.0,
-                        vx: (Math.random() - 0.5) * 0.5,
-                        vy: Math.random() * 0.5
-                    });
-                    if (this.trail.length > settings.trailLength) {
-                        this.trail.shift();
-                    }
-                }
-
-                // Update trail particles
-                this.trail.forEach(t => {
-                    t.x += t.vx;
-                    t.y += t.vy;
-                    t.life -= 0.05;
-                });
-                this.trail = this.trail.filter(t => t.life > 0);
-
-                // Move rocket
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vy += 0.05; // Slow down as it rises
 
-                // Check if should explode
-                if (this.y <= this.targetY || this.vy >= 0) {
-                    this.exploded = true;
-                }
+                // Wrap around edges
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
             }
 
             draw() {
                 const c = this.color;
 
-                // Draw trail
-                this.trail.forEach((t, i) => {
-                    const alpha = t.life * 0.8;
-                    const size = t.life * 2;
-
-                    ctx.beginPath();
-                    ctx.arc(t.x, t.y, size, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha})`;
-                    ctx.fill();
-                });
-
-                // Draw rocket head
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, 1)`;
-                ctx.fill();
-
                 // Glow
                 const gradient = ctx.createRadialGradient(
                     this.x, this.y, 0,
-                    this.x, this.y, this.size * 4
+                    this.x, this.y, this.size * 3
                 );
                 gradient.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, 0.8)`);
                 gradient.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0)`);
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size * 4, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
                 ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Core
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`;
                 ctx.fill();
             }
         }
 
-        // Explosion spark
+        // Explosion spark (temporary particles from explosions)
         class Spark {
-            constructor(x, y, color, speed) {
+            constructor(x, y, color) {
                 this.x = x;
                 this.y = y;
                 const angle = Math.random() * Math.PI * 2;
-                const spd = speed * (0.5 + Math.random() * 0.5);
-                this.vx = Math.cos(angle) * spd;
-                this.vy = Math.sin(angle) * spd;
+                const speed = 2 + Math.random() * 4;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
                 this.color = color;
                 this.life = 1.0;
-                this.decay = 0.01 + Math.random() * 0.015;
-                this.size = 1.5 + Math.random() * 2;
-                this.trail = [];
+                this.decay = 0.02;
+                this.size = 2 + Math.random() * 2;
             }
 
             update() {
-                // Trail
-                this.trail.push({ x: this.x, y: this.y, life: 0.5 });
-                if (this.trail.length > 8) this.trail.shift();
-                this.trail.forEach(t => t.life -= 0.08);
-                this.trail = this.trail.filter(t => t.life > 0);
-
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vy += 0.08; // Gravity
-                this.vx *= 0.98;
-                this.vy *= 0.98;
+                this.vx *= 0.95;
+                this.vy *= 0.95;
                 this.life -= this.decay;
             }
 
@@ -425,23 +352,15 @@
                 const c = this.color;
                 const alpha = this.life;
 
-                // Trail
-                this.trail.forEach(t => {
-                    ctx.beginPath();
-                    ctx.arc(t.x, t.y, this.size * 0.5 * t.life, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${t.life * alpha * 0.5})`;
-                    ctx.fill();
-                });
-
                 // Glow
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
                 const gradient = ctx.createRadialGradient(
                     this.x, this.y, 0,
                     this.x, this.y, this.size * 3
                 );
                 gradient.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha * 0.8})`);
                 gradient.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0)`);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
                 ctx.fillStyle = gradient;
                 ctx.fill();
 
@@ -453,225 +372,114 @@
             }
         }
 
-        // Explosion
-        class Explosion {
-            constructor(x, y, color) {
-                this.sparks = [];
-                const count = settings.sparkCount;
-                const speed = settings.explosionSize / 10;
+        // Draw connections between all stars
+        function drawConnections(particles) {
+            if (settings.connectionRadius <= 0) return;
 
-                for (let i = 0; i < count; i++) {
-                    this.sparks.push(new Spark(x, y, color, speed));
-                }
+            const radius = settings.connectionRadius;
 
-                // Multi-burst: add secondary smaller explosions
-                if (settings.multiBurst && Math.random() > 0.5) {
-                    setTimeout(() => {
-                        const colors = getColors();
-                        for (let i = 0; i < 3; i++) {
-                            const offsetX = (Math.random() - 0.5) * 60;
-                            const offsetY = (Math.random() - 0.5) * 60;
-                            const newColor = colors[Math.floor(Math.random() * colors.length)];
-                            for (let j = 0; j < count / 3; j++) {
-                                this.sparks.push(new Spark(x + offsetX, y + offsetY, newColor, speed * 0.6));
-                            }
-                        }
-                    }, 150);
-                }
-            }
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const s1 = particles[i];
+                    const s2 = particles[j];
 
-            update() {
-                this.sparks.forEach(s => s.update());
-                this.sparks = this.sparks.filter(s => s.life > 0);
-            }
+                    const dx = s2.x - s1.x;
+                    const dy = s2.y - s1.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
 
-            draw() {
-                this.sparks.forEach(s => s.draw());
-            }
+                    if (distance < radius) {
+                        const alpha = (1 - distance / radius) * 0.3;
+                        const c1 = s1.color;
+                        const c2 = s2.color;
+                        const avgR = (c1.r + c2.r) / 2;
+                        const avgG = (c1.g + c2.g) / 2;
+                        const avgB = (c1.b + c2.b) / 2;
 
-            drawConnections() {
-                if (settings.connectionRadius <= 0) return;
-
-                const radius = settings.connectionRadius;
-
-                for (let i = 0; i < this.sparks.length; i++) {
-                    for (let j = i + 1; j < this.sparks.length; j++) {
-                        const s1 = this.sparks[i];
-                        const s2 = this.sparks[j];
-
-                        const dx = s2.x - s1.x;
-                        const dy = s2.y - s1.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-
-                        if (distance < radius) {
-                            const alpha = (1 - distance / radius) * Math.min(s1.life, s2.life) * 0.3;
-                            const c1 = s1.color;
-                            const c2 = s2.color;
-                            const avgR = (c1.r + c2.r) / 2;
-                            const avgG = (c1.g + c2.g) / 2;
-                            const avgB = (c1.b + c2.b) / 2;
-
-                            ctx.beginPath();
-                            ctx.moveTo(s1.x, s1.y);
-                            ctx.lineTo(s2.x, s2.y);
-                            ctx.strokeStyle = `rgba(${avgR}, ${avgG}, ${avgB}, ${alpha})`;
-                            ctx.lineWidth = 1;
-                            ctx.stroke();
-                        }
+                        ctx.beginPath();
+                        ctx.moveTo(s1.x, s1.y);
+                        ctx.lineTo(s2.x, s2.y);
+                        ctx.strokeStyle = `rgba(${avgR}, ${avgG}, ${avgB}, ${alpha})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
                     }
                 }
             }
+        }
 
-            isDead() {
-                return this.sparks.length === 0;
+        let stars = [];
+        let explosionSparks = [];
+        let explosionTimer = 0;
+
+        // Initialize stars
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < settings.starCount; i++) {
+                stars.push(new Star());
             }
         }
 
-        // Shooting star
-        class ShootingStar {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height * 0.3;
-                const angle = Math.PI / 4 + (Math.random() - 0.5) * 0.5;
-                const speed = 15 + Math.random() * 10;
-                this.vx = Math.cos(angle) * speed;
-                this.vy = Math.sin(angle) * speed;
-                this.life = 1.0;
-                this.trail = [];
-                this.color = getRandomColor();
-            }
-
-            update() {
-                this.trail.push({ x: this.x, y: this.y, life: 1.0 });
-                if (this.trail.length > 20) this.trail.shift();
-                this.trail.forEach(t => t.life -= 0.05);
-                this.trail = this.trail.filter(t => t.life > 0);
-
-                this.x += this.vx;
-                this.y += this.vy;
-                this.life -= 0.02;
-            }
-
-            draw() {
-                const c = this.color;
-
-                for (let i = 1; i < this.trail.length; i++) {
-                    const t = this.trail[i];
-                    const prev = this.trail[i - 1];
-                    ctx.beginPath();
-                    ctx.moveTo(prev.x, prev.y);
-                    ctx.lineTo(t.x, t.y);
-                    ctx.strokeStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${t.life * 0.8})`;
-                    ctx.lineWidth = 2 * t.life;
-                    ctx.stroke();
-                }
-
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`;
-                ctx.fill();
-            }
-
-            isDead() {
-                return this.life <= 0 || this.x > canvas.width || this.y > canvas.height;
-            }
-        }
-
-        let rockets = [];
-        let explosions = [];
-        let shootingStars = [];
-        let launchTimer = 0;
-        let shootingStarTimer = 0;
-
-        // Draw initial background
-        drawCloudySky();
+        // Initialize stars
+        initStars();
 
         // Click to create explosions
         canvas.addEventListener('click', (e) => {
-            explosions.push(new Explosion(e.clientX, e.clientY, getRandomColor()));
-            explosions.push(new Explosion(e.clientX + (Math.random() - 0.5) * 80, e.clientY + (Math.random() - 0.5) * 80, getRandomColor()));
-            explosions.push(new Explosion(e.clientX + (Math.random() - 0.5) * 80, e.clientY + (Math.random() - 0.5) * 80, getRandomColor()));
+            createExplosion(e.clientX, e.clientY);
         });
 
-        // Draw cloudy sky background
-        function drawCloudySky() {
-            // Dark green gradient sky
-            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            skyGradient.addColorStop(0, '#0a1a0a');
-            skyGradient.addColorStop(0.3, '#0d2010');
-            skyGradient.addColorStop(0.6, '#081508');
-            skyGradient.addColorStop(1, '#040a04');
-            ctx.fillStyle = skyGradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Add subtle clouds
-            const time = Date.now() * 0.00005;
-            ctx.globalAlpha = 0.08;
-            for (let i = 0; i < 8; i++) {
-                const x = ((i * 200 + time * 50) % (canvas.width + 400)) - 200;
-                const y = 50 + i * 60 + Math.sin(time + i) * 20;
-                const width = 200 + Math.sin(i) * 80;
-                const height = 40 + Math.cos(i) * 20;
-
-                const cloudGradient = ctx.createRadialGradient(x, y, 0, x, y, width);
-                cloudGradient.addColorStop(0, '#1a3a1a');
-                cloudGradient.addColorStop(0.5, '#0d200d');
-                cloudGradient.addColorStop(1, 'transparent');
-                ctx.fillStyle = cloudGradient;
-                ctx.beginPath();
-                ctx.ellipse(x, y, width, height, 0, 0, Math.PI * 2);
-                ctx.fill();
+        // Create explosion at a star's position
+        function createExplosion(x, y) {
+            const color = getRandomColor();
+            // Create burst of sparks
+            for (let i = 0; i < 30; i++) {
+                explosionSparks.push(new Spark(x, y, color));
             }
-            ctx.globalAlpha = 1;
+            // Add some new stars from the explosion
+            for (let i = 0; i < 5; i++) {
+                stars.push(new Star(x, y));
+            }
         }
 
         function animate() {
-            // Fade with dark green
-            ctx.fillStyle = 'rgba(4, 10, 4, 0.15)';
+            // Clear with fade effect
+            ctx.fillStyle = 'rgba(4, 10, 4, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Occasionally redraw clouds for depth
-            if (Math.random() < 0.01) {
-                drawCloudySky();
+            // Adjust star count if changed
+            while (stars.length < settings.starCount) {
+                stars.push(new Star());
+            }
+            while (stars.length > settings.starCount) {
+                stars.pop();
             }
 
-            // Auto spawn explosions
-            launchTimer++;
-            if (launchTimer > (25 - settings.launchRate)) {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height * 0.7 + canvas.height * 0.1;
-                explosions.push(new Explosion(x, y, getRandomColor()));
-                if (Math.random() > 0.6) {
-                    const x2 = Math.random() * canvas.width;
-                    const y2 = Math.random() * canvas.height * 0.7 + canvas.height * 0.1;
-                    explosions.push(new Explosion(x2, y2, getRandomColor()));
-                }
-                launchTimer = 0;
-            }
-
-            // Shooting stars
-            if (settings.shootingStars) {
-                shootingStarTimer++;
-                if (shootingStarTimer > 60 && Math.random() < 0.02) {
-                    shootingStars.push(new ShootingStar());
-                    shootingStarTimer = 0;
+            // Random explosions
+            if (settings.explosionRate > 0) {
+                explosionTimer++;
+                if (explosionTimer > (200 - settings.explosionRate * 10)) {
+                    const randomStar = stars[Math.floor(Math.random() * stars.length)];
+                    if (randomStar) {
+                        createExplosion(randomStar.x, randomStar.y);
+                    }
+                    explosionTimer = 0;
                 }
             }
 
-            // Update and draw shooting stars
-            shootingStars.forEach(star => {
+            // Update and draw explosion sparks
+            explosionSparks.forEach(spark => spark.update());
+            explosionSparks = explosionSparks.filter(spark => spark.life > 0);
+
+            // Draw connections between all particles (stars + explosion sparks)
+            const allParticles = [...stars, ...explosionSparks.filter(s => s.life > 0.5)];
+            drawConnections(allParticles);
+
+            // Update and draw stars
+            stars.forEach(star => {
                 star.update();
                 star.draw();
             });
-            shootingStars = shootingStars.filter(star => !star.isDead());
 
-            // Update and draw explosions
-            explosions.forEach(exp => {
-                exp.update();
-                exp.drawConnections();
-                exp.draw();
-            });
-            explosions = explosions.filter(exp => !exp.isDead());
+            // Draw explosion sparks
+            explosionSparks.forEach(spark => spark.draw());
 
             requestAnimationFrame(animate);
         }
@@ -679,36 +487,27 @@
         animate();
 
         // Controls
-        document.getElementById('launchRate').addEventListener('input', (e) => {
-            settings.launchRate = parseInt(e.target.value);
-        });
-
-        document.getElementById('explosionSize').addEventListener('input', (e) => {
-            settings.explosionSize = parseInt(e.target.value);
-        });
-
-        document.getElementById('sparkCount').addEventListener('input', (e) => {
-            settings.sparkCount = parseInt(e.target.value);
-        });
-
-        document.getElementById('trailLength').addEventListener('input', (e) => {
-            settings.trailLength = parseInt(e.target.value);
+        document.getElementById('starCount').addEventListener('input', (e) => {
+            settings.starCount = parseInt(e.target.value);
         });
 
         document.getElementById('connectionRadius').addEventListener('input', (e) => {
             settings.connectionRadius = parseInt(e.target.value);
         });
 
-        document.getElementById('shootingStars').addEventListener('change', (e) => {
-            settings.shootingStars = e.target.checked;
+        document.getElementById('starSpeed').addEventListener('input', (e) => {
+            settings.starSpeed = parseInt(e.target.value);
+            // Update existing star speeds
+            stars.forEach(star => {
+                const angle = Math.atan2(star.vy, star.vx);
+                const speed = (settings.starSpeed / 100) * (0.3 + Math.random() * 0.7);
+                star.vx = Math.cos(angle) * speed;
+                star.vy = Math.sin(angle) * speed;
+            });
         });
 
-        document.getElementById('multiBurst').addEventListener('change', (e) => {
-            settings.multiBurst = e.target.checked;
-        });
-
-        document.getElementById('sparkleTrail').addEventListener('change', (e) => {
-            settings.sparkleTrail = e.target.checked;
+        document.getElementById('explosionRate').addEventListener('input', (e) => {
+            settings.explosionRate = parseInt(e.target.value);
         });
 
         // Theme buttons
