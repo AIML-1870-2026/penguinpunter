@@ -199,6 +199,10 @@
             <label>Trail Length</label>
             <input type="range" id="trailLength" min="5" max="30" value="15">
         </div>
+        <div class="control-group">
+            <label>Connection Radius</label>
+            <input type="range" id="connectionRadius" min="0" max="200" value="100">
+        </div>
 
         <div class="section-title">Visual Effects</div>
         <div class="toggle-group">
@@ -249,6 +253,7 @@
             explosionSize: 50,
             sparkCount: 60,
             trailLength: 15,
+            connectionRadius: 100,
             shootingStars: true,
             multiBurst: true,
             sparkleTrail: true,
@@ -484,6 +489,39 @@
                 this.sparks.forEach(s => s.draw());
             }
 
+            drawConnections() {
+                if (settings.connectionRadius <= 0) return;
+
+                const radius = settings.connectionRadius;
+
+                for (let i = 0; i < this.sparks.length; i++) {
+                    for (let j = i + 1; j < this.sparks.length; j++) {
+                        const s1 = this.sparks[i];
+                        const s2 = this.sparks[j];
+
+                        const dx = s2.x - s1.x;
+                        const dy = s2.y - s1.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < radius) {
+                            const alpha = (1 - distance / radius) * Math.min(s1.life, s2.life) * 0.3;
+                            const c1 = s1.color;
+                            const c2 = s2.color;
+                            const avgR = (c1.r + c2.r) / 2;
+                            const avgG = (c1.g + c2.g) / 2;
+                            const avgB = (c1.b + c2.b) / 2;
+
+                            ctx.beginPath();
+                            ctx.moveTo(s1.x, s1.y);
+                            ctx.lineTo(s2.x, s2.y);
+                            ctx.strokeStyle = `rgba(${avgR}, ${avgG}, ${avgB}, ${alpha})`;
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
             isDead() {
                 return this.sparks.length === 0;
             }
@@ -630,6 +668,7 @@
             // Update and draw explosions
             explosions.forEach(exp => {
                 exp.update();
+                exp.drawConnections();
                 exp.draw();
             });
             explosions = explosions.filter(exp => !exp.isDead());
@@ -654,6 +693,10 @@
 
         document.getElementById('trailLength').addEventListener('input', (e) => {
             settings.trailLength = parseInt(e.target.value);
+        });
+
+        document.getElementById('connectionRadius').addEventListener('input', (e) => {
+            settings.connectionRadius = parseInt(e.target.value);
         });
 
         document.getElementById('shootingStars').addEventListener('change', (e) => {
