@@ -4,7 +4,7 @@ class InteractionHandler {
         this.canvas = canvas;
         this.simulation = simulation;
         this.isPainting = false;
-        this.brushRadius = 10;  // Default brush size
+        this.brushRadius = 4;  // Default brush size
 
         this.setupEventListeners();
     }
