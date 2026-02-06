@@ -35,14 +35,21 @@ window.addEventListener('DOMContentLoaded', () => {
     renderer.setTheme('Blood Cells');
     console.log('Renderer initialized');
 
-    // Initialize interaction handler
-    interaction = new InteractionHandler(canvas, simulation);
-    console.log('Interaction handler initialized');
-
     // Initialize controls
     controls = new ControlsManager(simulation, renderer);
     controls.updateParameterDisplays();
     console.log('Controls initialized');
+
+    // Initialize interaction handler (with controls reference)
+    interaction = new InteractionHandler(canvas, simulation, controls);
+    console.log('Interaction handler initialized');
+
+    // Start paused to show static bubbles (drag to rupture and start leaking)
+    controls.isPaused = true;
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    if (playPauseBtn) {
+        playPauseBtn.textContent = 'Play';
+    }
 
     // Setup export functionality
     setupExportButton(canvas, renderer, simulation);

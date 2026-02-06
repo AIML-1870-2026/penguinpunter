@@ -1,8 +1,9 @@
 // Mouse/Touch Interaction Handler for bleeding effect
 class InteractionHandler {
-    constructor(canvas, simulation) {
+    constructor(canvas, simulation, controls = null) {
         this.canvas = canvas;
         this.simulation = simulation;
+        this.controls = controls;
         this.isPainting = false;
         this.brushRadius = 4;  // Default brush size
 
@@ -13,6 +14,10 @@ class InteractionHandler {
         // Mouse events
         this.canvas.addEventListener('mousedown', (e) => {
             this.isPainting = true;
+            // Unpause simulation when user starts dragging (ruptures membrane)
+            if (this.controls && this.controls.isPaused) {
+                this.controls.togglePlayPause();
+            }
             this.paint(e);
         });
 
