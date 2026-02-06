@@ -32,9 +32,9 @@ class GrayScottSimulation {
             this.gridB[i] = 0.0;
         }
 
-        // Create 8-12 solid blood bubbles scattered across canvas
-        const numBubbles = 8 + Math.floor(Math.random() * 5);
-        const bubbleRadius = 15 + Math.floor(Math.random() * 10);  // 15-25 pixel radius
+        // Create 20-30 solid blood bubbles scattered across canvas
+        const numBubbles = 20 + Math.floor(Math.random() * 11);
+        const bubbleRadius = 8 + Math.floor(Math.random() * 8);  // 8-15 pixel radius
 
         for (let bubble = 0; bubble < numBubbles; bubble++) {
             // Random position, avoiding edges
