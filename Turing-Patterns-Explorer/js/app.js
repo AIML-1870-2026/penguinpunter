@@ -26,7 +26,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Initialize simulation (256x256 grid)
     simulation = new GrayScottSimulation(256, 256);
-    simulation.setParameters(0.0367, 0.0649);  // Default: Mitosis
+    simulation.setParameters(0.0380, 0.0610);  // Default: Bubbles preset for stable blood bubbles
     simulation.reset();
     console.log('Simulation initialized');
 

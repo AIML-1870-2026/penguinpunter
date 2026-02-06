@@ -24,7 +24,7 @@ class GrayScottSimulation {
         this.k = k;
     }
 
-    // Reset simulation with random seeds
+    // Reset simulation with solid blood bubbles
     reset() {
         // Initialize: full A everywhere, no B
         for (let i = 0; i < this.gridA.length; i++) {
@@ -32,18 +32,34 @@ class GrayScottSimulation {
             this.gridB[i] = 0.0;
         }
 
-        // Add random B seeds in center region
-        const centerX = Math.floor(this.width / 2);
-        const centerY = Math.floor(this.height / 2);
-        const seedRadius = 20;
+        // Create 8-12 solid blood bubbles scattered across canvas
+        const numBubbles = 8 + Math.floor(Math.random() * 5);
+        const bubbleRadius = 15 + Math.floor(Math.random() * 10);  // 15-25 pixel radius
 
-        for (let i = 0; i < 100; i++) {
-            const x = centerX + Math.floor((Math.random() - 0.5) * seedRadius * 2);
-            const y = centerY + Math.floor((Math.random() - 0.5) * seedRadius * 2);
+        for (let bubble = 0; bubble < numBubbles; bubble++) {
+            // Random position, avoiding edges
+            const margin = 40;
+            const bubbleX = margin + Math.floor(Math.random() * (this.width - 2 * margin));
+            const bubbleY = margin + Math.floor(Math.random() * (this.height - 2 * margin));
 
-            if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-                const idx = y * this.width + x;
-                this.gridB[idx] = 1.0;
+            // Fill circular area with high B concentration (solid bubble)
+            for (let dy = -bubbleRadius; dy <= bubbleRadius; dy++) {
+                for (let dx = -bubbleRadius; dx <= bubbleRadius; dx++) {
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Create solid bubble with slight gradient at edges
+                    if (dist <= bubbleRadius) {
+                        const x = bubbleX + dx;
+                        const y = bubbleY + dy;
+
+                        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                            const idx = y * this.width + x;
+                            // Solid core with slight falloff at edges
+                            const concentration = dist < bubbleRadius * 0.8 ? 1.0 : 0.8;
+                            this.gridB[idx] = concentration;
+                        }
+                    }
+                }
             }
         }
     }
