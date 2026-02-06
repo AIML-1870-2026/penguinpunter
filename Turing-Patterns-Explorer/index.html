@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turing Patterns Explorer - penguinpunter</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Turing Patterns Explorer</h1>
+            <div class="header-info">
+                <span id="fps-display">FPS: --</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="canvas-container">
+                <canvas id="simulation-canvas"></canvas>
+            </div>
+
+            <div class="control-panel">
+                <section class="control-section">
+                    <h2>Preset Patterns</h2>
+                    <div class="preset-grid">
+                        <div class="preset-item active" data-preset="0">Mitosis</div>
+                        <div class="preset-item" data-preset="1">Coral</div>
+                        <div class="preset-item" data-preset="2">Spots</div>
+                        <div class="preset-item" data-preset="3">Stripes</div>
+                        <div class="preset-item" data-preset="4">Labyrinth</div>
+                        <div class="preset-item" data-preset="5">Waves</div>
+                        <div class="preset-item" data-preset="6">Bubbles</div>
+                        <div class="preset-item" data-preset="7">Solitons</div>
+                        <div class="preset-item" data-preset="8">Chaos</div>
+                        <div class="preset-item" data-preset="9">Fingerprint</div>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2>Pattern Breeding</h2>
+                    <div class="breeding-controls">
+                        <div class="control-group">
+                            <label for="parent-a-select">Parent A</label>
+                            <select id="parent-a-select"></select>
+                        </div>
+                        <div class="control-group">
+                            <label for="parent-b-select">Parent B</label>
+                            <select id="parent-b-select"></select>
+                        </div>
+                        <div class="control-group">
+                            <label for="blend-slider">Blend <span id="blend-value">50%</span></label>
+                            <input type="range" id="blend-slider" min="0" max="100" value="50">
+                        </div>
+                        <button id="breed-btn" class="control-btn">Generate Offspring</button>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2>Color Theme</h2>
+                    <div class="control-group">
+                        <select id="theme-select">
+                            <option value="Blood Cells" selected>Blood Cells</option>
+                            <option value="Poison">Poison</option>
+                            <option value="Bruise">Bruise</option>
+                            <option value="Infected">Infected</option>
+                            <option value="Coral Reef">Coral Reef</option>
+                            <option value="Cells">Cells</option>
+                            <option value="Foam">Foam</option>
+                            <option value="Moss">Moss</option>
+                        </select>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2>Manual Parameters</h2>
+                    <div class="control-group">
+                        <label for="f-slider">Feed Rate (f): <span id="f-value">0.0367</span></label>
+                        <input type="range" id="f-slider" min="0.010" max="0.100" step="0.001" value="0.0367">
+                    </div>
+                    <div class="control-group">
+                        <label for="k-slider">Kill Rate (k): <span id="k-value">0.0649</span></label>
+                        <input type="range" id="k-slider" min="0.045" max="0.070" step="0.001" value="0.0649">
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2>Simulation Controls</h2>
+                    <div class="button-group">
+                        <button id="play-pause-btn" class="control-btn">Pause</button>
+                        <button id="reset-btn" class="control-btn">Reset</button>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h2>Export</h2>
+                    <div class="export-controls">
+                        <div class="control-group">
+                            <label for="export-scale">Resolution</label>
+                            <select id="export-scale">
+                                <option value="1">1x (256x256)</option>
+                                <option value="2">2x (512x512)</option>
+                                <option value="4">4x (1024x1024)</option>
+                            </select>
+                        </div>
+                        <button id="export-btn" class="control-btn">Export PNG</button>
+                    </div>
+                </section>
+
+                <section class="control-section info-section">
+                    <h3>How to Use</h3>
+                    <p>Click or drag on the canvas to inject chemical B and create bleeding patterns.</p>
+                    <p><strong>Keyboard Shortcuts:</strong></p>
+                    <ul>
+                        <li>Space: Play/Pause</li>
+                        <li>R: Reset</li>
+                        <li>E: Export</li>
+                        <li>1-9: Load presets</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load scripts in order -->
+    <script src="js/presets.js"></script>
+    <script src="js/simulation.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/breeding.js"></script>
+    <script src="js/interaction.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
