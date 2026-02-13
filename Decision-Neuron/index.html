@@ -7,34 +7,44 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a2e;--border:#2a2a3e;
-  --text:#e0e0f0;--text-dim:#8888aa;--cyan:#00e5ff;--magenta:#ff00aa;
-  --orange:#ff8c00;--gold:#ffd700;--green:#00ff88;--red:#ff4466;
+  --bg:#0d0806;--surface:#1a120e;--surface2:#261a14;--border:#3d2a1f;
+  --text:#f0ddd0;--text-dim:#9a7e6e;
+  --flame:#ff4d00;--ember:#ff8c00;--ash:#8b7355;
+  --smoke:#4a3f35;--charcoal:#2a2018;
+  --burn-red:#cc2200;--burn-bright:#ff6622;
+  --toxic:#88aa22;--soot:#3a3028;
+  --gold:#ffaa00;
 }
 html{font-size:14px}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;overflow-x:hidden;position:relative}
 h1,h2,h3{font-weight:600}
-a{color:var(--cyan)}
+a{color:var(--ember)}
 
-/* Layout */
-.app{max-width:1400px;margin:0 auto;padding:1rem}
+/* Smoke background */
+#smoke-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0.4}
+.app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:1rem}
+
+/* Header */
 header{text-align:center;padding:1.5rem 0 1rem}
-header h1{font-size:1.8rem;background:linear-gradient(90deg,var(--cyan),var(--magenta));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header h1{font-size:1.7rem;background:linear-gradient(90deg,#ff4d00,#ff8c00,#ffcc00,#ff4d00);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:fireShift 4s ease-in-out infinite}
+@keyframes fireShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 header p{color:var(--text-dim);margin-top:.3rem;font-size:.95rem}
+header .subtitle-emphasis{color:var(--burn-red);font-weight:600}
 
+/* Tabs */
 .tabs{display:flex;gap:.5rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap}
 .tab{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);padding:.5rem 1.2rem;border-radius:8px;cursor:pointer;transition:all .2s;font-size:.9rem}
-.tab:hover{border-color:var(--cyan);color:var(--text)}
-.tab.active{background:var(--surface2);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.15)}
+.tab:hover{border-color:var(--ember);color:var(--text)}
+.tab.active{background:var(--surface2);border-color:var(--flame);color:var(--flame);box-shadow:0 0 15px rgba(255,77,0,.2)}
 
 .panel{display:none}
 .panel.active{display:block}
 
 /* Cards */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem}
-.card h3{font-size:1rem;margin-bottom:.8rem;color:var(--cyan)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem;box-shadow:inset 0 0 30px rgba(0,0,0,.3)}
+.card h3{font-size:1rem;margin-bottom:.8rem;color:var(--ember)}
 
-/* Main neuron panel */
+/* Neuron layout */
 .neuron-layout{display:grid;grid-template-columns:280px 1fr 280px;gap:1rem;align-items:start}
 @media(max-width:960px){.neuron-layout{grid-template-columns:1fr;}}
 
@@ -42,12 +52,12 @@ header p{color:var(--text-dim);margin-top:.3rem;font-size:.95rem}
 .slider-group{margin-bottom:1rem}
 .slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;font-size:.85rem}
 .slider-label .name{color:var(--text)}
-.slider-label .value{color:var(--cyan);font-weight:600;font-variant-numeric:tabular-nums}
+.slider-label .value{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums}
 .weight-badge{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:0 .4rem;font-size:.75rem;color:var(--gold);margin-left:.5rem}
 .slider-desc{font-size:.75rem;color:var(--text-dim);margin-bottom:.2rem}
-input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:var(--surface2);outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 8px rgba(0,229,255,.4)}
-.bias-slider input[type=range]::-webkit-slider-thumb{background:var(--orange);box-shadow:0 0 8px rgba(255,140,0,.4)}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:var(--charcoal);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--flame);cursor:pointer;box-shadow:0 0 10px rgba(255,77,0,.5)}
+.bias-slider input[type=range]::-webkit-slider-thumb{background:var(--toxic);box-shadow:0 0 10px rgba(136,170,34,.5)}
 
 /* Neuron SVG */
 .neuron-viz{display:flex;justify-content:center;align-items:center;min-height:360px}
@@ -58,9 +68,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 .math-row:last-child{border-bottom:none}
 .math-row .label{color:var(--text-dim)}
 .math-row .val{font-weight:600}
-.math-row .val.pos{color:var(--cyan)}
-.math-row .val.neg{color:var(--red)}
-.formula{background:var(--surface2);border-radius:8px;padding:.8rem;font-family:'Courier New',monospace;font-size:.85rem;margin-bottom:.8rem;text-align:center;color:var(--gold)}
+.math-row .val.pos{color:var(--ember)}
+.math-row .val.neg{color:var(--burn-red)}
+.formula{background:var(--charcoal);border:1px solid var(--border);border-radius:8px;padding:.8rem;font-family:'Courier New',monospace;font-size:.85rem;margin-bottom:.8rem;text-align:center;color:var(--gold)}
 
 /* Output display */
 .output-display{text-align:center;padding:1rem;margin-top:.5rem}
@@ -69,30 +79,30 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 
 /* Bias bar */
 .bias-bar{margin-top:.5rem}
-.bias-bar .slider-label .value{color:var(--orange)}
+.bias-bar .slider-label .value{color:var(--toxic)}
 
 /* Decision Boundary */
 .boundary-controls{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
 .boundary-controls label{font-size:.85rem;color:var(--text-dim)}
-.boundary-controls select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .5rem;border-radius:6px;font-size:.85rem}
+.boundary-controls select{background:var(--charcoal);border:1px solid var(--border);color:var(--text);padding:.3rem .5rem;border-radius:6px;font-size:.85rem}
 .canvas-wrap{position:relative;display:flex;justify-content:center}
 canvas{border-radius:8px;cursor:crosshair}
 
 /* Training */
 .training-controls{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
-.btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.45rem 1rem;border-radius:8px;cursor:pointer;font-size:.85rem;transition:all .2s}
-.btn:hover{border-color:var(--cyan);color:var(--cyan)}
-.btn.primary{border-color:var(--cyan);color:var(--cyan)}
-.btn.danger{border-color:var(--red);color:var(--red)}
-.btn.yes-btn{border-color:var(--magenta);color:var(--magenta)}
+.btn{background:var(--charcoal);border:1px solid var(--border);color:var(--text);padding:.45rem 1rem;border-radius:8px;cursor:pointer;font-size:.85rem;transition:all .2s}
+.btn:hover{border-color:var(--ember);color:var(--ember)}
+.btn.primary{border-color:var(--ember);color:var(--ember)}
+.btn.danger{border-color:var(--burn-red);color:var(--burn-red)}
+.btn.yes-btn{border-color:var(--flame);color:var(--flame)}
 .btn.yes-btn.active,.btn.no-btn.active{background:var(--surface);font-weight:700}
-.btn.no-btn{border-color:var(--cyan);color:var(--cyan)}
+.btn.no-btn{border-color:var(--ash);color:var(--ash)}
 .training-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.5rem;margin-top:.8rem}
-.stat-box{background:var(--surface2);border-radius:8px;padding:.5rem .7rem;text-align:center}
+.stat-box{background:var(--charcoal);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;text-align:center}
 .stat-box .stat-label{font-size:.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em}
 .stat-box .stat-val{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--gold)}
 .lr-control{display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:var(--text-dim)}
-.lr-control input{width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.2rem .4rem;border-radius:4px;font-size:.85rem;text-align:center}
+.lr-control input{width:60px;background:var(--charcoal);border:1px solid var(--border);color:var(--text);padding:.2rem .4rem;border-radius:4px;font-size:.85rem;text-align:center}
 
 /* Sensitivity */
 .sensitivity-chart{display:flex;justify-content:center}
@@ -104,16 +114,21 @@ canvas{border-radius:8px;cursor:crosshair}
 .influence-bars{margin-top:1rem}
 .inf-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;font-size:.85rem}
 .inf-label{width:140px;text-align:right;color:var(--text-dim)}
-.inf-bar-wrap{flex:1;height:20px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative}
+.inf-bar-wrap{flex:1;height:20px;background:var(--charcoal);border-radius:4px;overflow:hidden;position:relative}
 .inf-bar{height:100%;border-radius:4px;transition:width .3s}
 .inf-val{width:50px;font-variant-numeric:tabular-nums;font-weight:600}
+
+/* Fire glow on body edges */
+body::before{content:'';position:fixed;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to top,rgba(255,60,0,.06),transparent);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;top:0;left:0;right:0;height:80px;background:linear-gradient(to bottom,rgba(60,40,20,.4),transparent);pointer-events:none;z-index:0}
 </style>
 </head>
 <body>
+<canvas id="smoke-bg"></canvas>
 <div class="app">
   <header>
-    <h1>Decision Neuron: Is Using AI Worth It?</h1>
-    <p>Explore how a single neuron makes decisions with interactive controls, training, and analysis</p>
+    <h1>Is Using AI Worth It, Even Though It Is Extremely Damaging to the Environment?</h1>
+    <p>An interactive single-neuron decision explorer — adjust inputs, visualize boundaries, train, and analyze</p>
   </header>
 
   <div class="tabs">
@@ -126,12 +141,10 @@ canvas{border-radius:8px;cursor:crosshair}
   <!-- PANEL 1: Interactive Neuron -->
   <div class="panel active" id="panel-neuron">
     <div class="neuron-layout">
-      <!-- Left: Inputs -->
       <div class="card" id="input-panel">
         <h3>Inputs</h3>
         <div id="sliders-container"></div>
       </div>
-      <!-- Center: Visualization -->
       <div class="card">
         <h3>Neuron Visualization</h3>
         <div class="neuron-viz" id="neuron-viz"></div>
@@ -149,7 +162,6 @@ canvas{border-radius:8px;cursor:crosshair}
           </div>
         </div>
       </div>
-      <!-- Right: Math -->
       <div class="card" id="math-panel">
         <h3>Math Breakdown</h3>
         <div class="formula">z = &Sigma;(x<sub>i</sub> &middot; w<sub>i</sub>) + b</div>
@@ -219,21 +231,131 @@ canvas{border-radius:8px;cursor:crosshair}
 </div>
 
 <script>
+// ========== SMOKE PARTICLE SYSTEM ==========
+(function(){
+  const canvas=document.getElementById('smoke-bg');
+  const ctx=canvas.getContext('2d');
+  let W,H;
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
+  resize();
+  window.addEventListener('resize',resize);
+
+  class Particle{
+    constructor(){this.reset()}
+    reset(){
+      this.x=Math.random()*W;
+      this.y=H+Math.random()*100;
+      this.vx=(Math.random()-0.5)*0.4;
+      this.vy=-(0.3+Math.random()*0.8);
+      this.size=20+Math.random()*60;
+      this.life=0;
+      this.maxLife=200+Math.random()*300;
+      // Mix of smoke grey, warm brown, and toxic yellow-green
+      const type=Math.random();
+      if(type<0.4){this.r=60;this.g=50;this.b=40}       // smoke
+      else if(type<0.7){this.r=80;this.g=40;this.b=15}   // brown smog
+      else if(type<0.85){this.r=100;this.g=90;this.b=30}  // toxic haze
+      else{this.r=120;this.g=50;this.b=10}                // ember glow
+    }
+    update(){
+      this.life++;
+      this.x+=this.vx+Math.sin(this.life*0.01)*0.3;
+      this.y+=this.vy;
+      this.size+=0.15;
+      if(this.life>this.maxLife||this.y<-this.size)this.reset();
+    }
+    draw(){
+      const t=this.life/this.maxLife;
+      const alpha=t<0.1?t*10:(t<0.5?1:(1-t)/0.5);
+      const a=Math.max(0,alpha*0.12);
+      ctx.beginPath();
+      const grad=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size);
+      grad.addColorStop(0,`rgba(${this.r},${this.g},${this.b},${a})`);
+      grad.addColorStop(1,`rgba(${this.r},${this.g},${this.b},0)`);
+      ctx.fillStyle=grad;
+      ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  const particles=[];
+  for(let i=0;i<50;i++){
+    const p=new Particle();
+    p.life=Math.random()*p.maxLife; // stagger
+    particles.push(p);
+  }
+
+  // Ember sparks
+  class Ember{
+    constructor(){this.reset()}
+    reset(){
+      this.x=Math.random()*W;
+      this.y=H+10;
+      this.vx=(Math.random()-0.5)*1.5;
+      this.vy=-(1+Math.random()*2);
+      this.size=1+Math.random()*2.5;
+      this.life=0;
+      this.maxLife=80+Math.random()*120;
+      this.brightness=0.5+Math.random()*0.5;
+    }
+    update(){
+      this.life++;
+      this.x+=this.vx+Math.sin(this.life*0.05)*0.5;
+      this.y+=this.vy;
+      this.vy*=0.995;
+      if(this.life>this.maxLife)this.reset();
+    }
+    draw(){
+      const t=this.life/this.maxLife;
+      const alpha=t<0.1?t*10:(1-t);
+      const a=Math.max(0,alpha*this.brightness*0.6);
+      ctx.fillStyle=`rgba(255,${Math.round(100+Math.random()*60)},0,${a})`;
+      ctx.beginPath();
+      ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  const embers=[];
+  for(let i=0;i<30;i++){
+    const e=new Ember();
+    e.life=Math.random()*e.maxLife;
+    embers.push(e);
+  }
+
+  function animate(){
+    ctx.clearRect(0,0,W,H);
+    // Subtle fire glow at bottom
+    const fireGrad=ctx.createLinearGradient(0,H,0,H-200);
+    fireGrad.addColorStop(0,'rgba(255,60,0,0.04)');
+    fireGrad.addColorStop(0.5,'rgba(180,40,0,0.02)');
+    fireGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=fireGrad;
+    ctx.fillRect(0,H-200,W,200);
+
+    particles.forEach(p=>{p.update();p.draw()});
+    embers.forEach(e=>{e.update();e.draw()});
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
 // ========== STATE ==========
 const INPUTS = [
   {name:'Task Complexity', desc:'How much AI actually helps with this task', defaultWeight:0.8},
   {name:'Time Saved', desc:'Efficiency gain from using AI', defaultWeight:0.6},
-  {name:'Environmental Cost', desc:'Energy usage / environmental impact', defaultWeight:-0.9},
+  {name:'Environmental Cost', desc:'Energy usage / environmental impact of the AI task', defaultWeight:-0.9},
   {name:'Alternative Difficulty', desc:'How hard it is to do the task without AI', defaultWeight:0.5},
   {name:'Task Importance', desc:'How much it matters to get this task right', defaultWeight:0.7},
 ];
-const COLORS = ['#00e5ff','#00ff88','#ff4466','#aa88ff','#ffd700'];
+// Fire-themed colors: flame, ember, toxic, warm purple, soot gold
+const COLORS = ['#ff4d00','#ff8c00','#88aa22','#cc6644','#ffaa00'];
 
 let weights = INPUTS.map(i=>i.defaultWeight);
 let bias = 0.5;
 let inputs = INPUTS.map(()=>0.5);
 let trainingPoints = [];
-let trainLabel = 1; // 1=yes, 0=no
+let trainLabel = 1;
 let trainSteps = 0;
 let learningRate = 0.1;
 
@@ -305,9 +427,12 @@ function drawNeuron(){
   const container=document.getElementById('neuron-viz');
   const w=container.clientWidth||500,h=360;
   const prob=forward(inputs,weights,bias);
-  const hue=prob>=0.5?`rgba(255,0,170,${0.3+prob*0.5})`:`rgba(0,229,255,${0.3+(1-prob)*0.5})`;
+  // Yes = fiery glow, No = ashy cool glow
+  const hue=prob>=0.5?`rgba(255,77,0,${0.2+prob*0.4})`:`rgba(139,115,85,${0.2+(1-prob)*0.4})`;
 
   let svg=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+  // Defs for glow filter
+  svg+=`<defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   const cx=w/2, cy=h/2, nr=36;
   const startX=60, endX=w-60;
 
@@ -316,28 +441,28 @@ function drawNeuron(){
     const iy=40+i*(h-80)/(INPUTS.length-1);
     const absW=Math.abs(weights[i]);
     const strokeW=1+absW*4;
-    const col=weights[i]>=0?'#00e5ff':'#ff4466';
+    const col=weights[i]>=0?'#ff8c00':'#cc2200';
     const opacity=0.3+absW*0.6;
     svg+=`<line x1="${startX}" y1="${iy}" x2="${cx}" y2="${cy}" stroke="${col}" stroke-width="${strokeW}" opacity="${opacity}"/>`;
-    svg+=`<circle cx="${startX}" cy="${iy}" r="18" fill="var(--surface2)" stroke="${COLORS[i]}" stroke-width="2"/>`;
+    svg+=`<circle cx="${startX}" cy="${iy}" r="18" fill="#261a14" stroke="${COLORS[i]}" stroke-width="2"/>`;
     svg+=`<text x="${startX}" y="${iy+4}" text-anchor="middle" fill="${COLORS[i]}" font-size="11" font-weight="600">${inputs[i].toFixed(2)}</text>`;
-    // Label
     const shortName=inp.name.split(' ').map(w=>w[0]).join('');
-    svg+=`<text x="${startX}" y="${iy-24}" text-anchor="middle" fill="var(--text-dim)" font-size="10">${shortName}</text>`;
+    svg+=`<text x="${startX}" y="${iy-24}" text-anchor="middle" fill="#9a7e6e" font-size="10">${shortName}</text>`;
   });
 
-  // Central neuron with glow
-  svg+=`<circle cx="${cx}" cy="${cy}" r="${nr+10}" fill="none" stroke="${hue}" stroke-width="2" opacity="0.3"/>`;
-  svg+=`<circle cx="${cx}" cy="${cy}" r="${nr}" fill="var(--surface2)" stroke="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" stroke-width="3"/>`;
-  svg+=`<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="700">&sigma;</text>`;
-  svg+=`<text x="${cx}" y="${cy+14}" text-anchor="middle" fill="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" font-size="11" font-weight="600">${(prob*100).toFixed(1)}%</text>`;
+  // Central neuron with fire/ash glow
+  const neuronStroke=prob>=0.5?'#ff4d00':'#8b7355';
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${nr+12}" fill="none" stroke="${hue}" stroke-width="2" opacity="0.4" filter="url(#glow)"/>`;
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${nr}" fill="#261a14" stroke="${neuronStroke}" stroke-width="3"/>`;
+  svg+=`<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#f0ddd0" font-size="13" font-weight="700">&sigma;</text>`;
+  svg+=`<text x="${cx}" y="${cy+14}" text-anchor="middle" fill="${neuronStroke}" font-size="11" font-weight="600">${(prob*100).toFixed(1)}%</text>`;
 
   // Output arrow
-  svg+=`<line x1="${cx+nr+4}" y1="${cy}" x2="${endX-20}" y2="${cy}" stroke="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" stroke-width="3" opacity="0.7"/>`;
-  // Output node
-  svg+=`<circle cx="${endX}" cy="${cy}" r="24" fill="var(--surface2)" stroke="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" stroke-width="2.5"/>`;
+  const outCol=prob>=0.5?'#ff4d00':'#8b7355';
+  svg+=`<line x1="${cx+nr+4}" y1="${cy}" x2="${endX-20}" y2="${cy}" stroke="${outCol}" stroke-width="3" opacity="0.7"/>`;
+  svg+=`<circle cx="${endX}" cy="${cy}" r="24" fill="#261a14" stroke="${outCol}" stroke-width="2.5"/>`;
   const outText=prob>=0.5?'YES':'NO';
-  svg+=`<text x="${endX}" y="${cy+5}" text-anchor="middle" fill="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" font-size="14" font-weight="700">${outText}</text>`;
+  svg+=`<text x="${endX}" y="${cy+5}" text-anchor="middle" fill="${outCol}" font-size="14" font-weight="700">${outText}</text>`;
 
   svg+=`</svg>`;
   container.innerHTML=svg;
@@ -350,10 +475,10 @@ function updateOutput(){
   const lEl=document.getElementById('output-label');
   pEl.textContent=(prob*100).toFixed(1)+'%';
   let label,color;
-  if(prob>=0.7){label='Definitely worth it';color='var(--magenta)'}
-  else if(prob>=0.5){label='Probably worth it';color='var(--magenta)'}
-  else if(prob>=0.3){label='Probably not worth it';color='var(--cyan)'}
-  else{label='Not worth it';color='var(--cyan)'}
+  if(prob>=0.7){label='Definitely worth it';color='#ff4d00'}
+  else if(prob>=0.5){label='Probably worth it';color='#ff8c00'}
+  else if(prob>=0.3){label='Probably not worth it';color='#8b7355'}
+  else{label='Not worth it';color='#6b5b4a'}
   pEl.style.color=color;
   lEl.style.color=color;
   lEl.textContent=label;
@@ -374,7 +499,7 @@ function updateMath(){
   html+=`<div class="math-row"><span class="label">Bias</span><span class="val ${bCls}">${bias>=0?'+':''}${bias.toFixed(3)}</span></div>`;
   html+=`<div class="math-row" style="border-top:2px solid var(--border);padding-top:.5rem"><span class="label" style="color:var(--gold)">z = </span><span class="val" style="color:var(--gold)">${z.toFixed(4)}</span></div>`;
   const out=sigmoid(z);
-  html+=`<div class="math-row"><span class="label" style="color:var(--gold)">&sigma;(z) = </span><span class="val" style="color:${out>=0.5?'var(--magenta)':'var(--cyan)'}">${out.toFixed(4)}</span></div>`;
+  html+=`<div class="math-row"><span class="label" style="color:var(--gold)">&sigma;(z) = </span><span class="val" style="color:${out>=0.5?'#ff4d00':'#8b7355'}">${out.toFixed(4)}</span></div>`;
   panel.innerHTML=html;
 }
 
@@ -384,7 +509,7 @@ function updateSliderDisplay(){
     document.getElementById('sv-'+i).textContent=inputs[i].toFixed(2);
     const wb=document.getElementById('wb-'+i);
     wb.textContent='w: '+weights[i].toFixed(2);
-    wb.style.color=weights[i]>=0?'var(--cyan)':'var(--red)';
+    wb.style.color=weights[i]>=0?'#ff8c00':'#cc2200';
   });
   document.getElementById('bias-val').textContent=(bias>=0?'+':'')+bias.toFixed(2);
 }
@@ -397,7 +522,6 @@ function drawBoundary(canvasId, axisXId, axisYId, showTrainingPoints){
   const xi=parseInt(document.getElementById(axisXId).value);
   const yi=parseInt(document.getElementById(axisYId).value);
   const res=100;
-  const cellW=W/res, cellH=H/res;
 
   const imgData=ctx.createImageData(W,H);
 
@@ -412,18 +536,19 @@ function drawBoundary(canvasId, axisXId, axisYId, showTrainingPoints){
 
       let r,g,b;
       if(p<0.5){
+        // Cool ash/smoke zone (dark gray-brown to smoky)
         const t=p/0.5;
-        r=Math.round(30+t*225);
-        g=Math.round(60+t*195);
-        b=Math.round(200+t*55);
+        r=Math.round(25+t*80);
+        g=Math.round(22+t*60);
+        b=Math.round(20+t*40);
       } else {
+        // Fire zone (warm orange to bright flame)
         const t=(p-0.5)/0.5;
-        r=Math.round(255);
-        g=Math.round(255-t*255);
-        b=Math.round(255-t*85);
+        r=Math.round(105+t*150);
+        g=Math.round(82-t*40);
+        b=Math.round(60-t*55);
       }
 
-      // Fill pixel block
       for(let dy=0;dy<Math.ceil(H/res);dy++){
         for(let dx=0;dx<Math.ceil(W/res);dx++){
           const ix=Math.floor(px*W/res)+dx;
@@ -441,23 +566,23 @@ function drawBoundary(canvasId, axisXId, axisYId, showTrainingPoints){
   }
   ctx.putImageData(imgData,0,0);
 
-  // Decision boundary contour (gold line at 50%)
-  ctx.strokeStyle='#ffd700';
+  // Decision boundary contour (bright yellow-gold line at 50%)
+  ctx.strokeStyle='#ffcc00';
   ctx.lineWidth=2.5;
+  ctx.shadowColor='#ff8800';
+  ctx.shadowBlur=6;
   ctx.setLineDash([]);
   ctx.beginPath();
   let started=false;
   for(let px=0;px<res;px++){
     const xv=px/(res-1);
-    // Find y where p=0.5 using binary search
-    let lo=0,hi=1,found=false,yv=0.5;
+    let lo=0,hi=1,yv=0.5;
     for(let iter=0;iter<30;iter++){
       const mid=(lo+hi)/2;
       const testInputs=[...inputs];
       testInputs[xi]=xv;testInputs[yi]=mid;
       const p=forward(testInputs,weights,bias);
       if(p>0.5)hi=mid;else lo=mid;
-      if(Math.abs(p-0.5)<0.001){found=true;yv=mid;break}
     }
     yv=(lo+hi)/2;
     if(yv>0.01&&yv<0.99){
@@ -467,33 +592,32 @@ function drawBoundary(canvasId, axisXId, axisYId, showTrainingPoints){
     }
   }
   ctx.stroke();
+  ctx.shadowBlur=0;
 
-  // Crosshair for current position
+  // Crosshair
   const curX=inputs[xi]*W;
   const curY=(1-inputs[yi])*H;
-  ctx.strokeStyle='#ffffff';
+  ctx.strokeStyle='rgba(240,221,208,0.5)';
   ctx.lineWidth=1;
   ctx.setLineDash([4,4]);
   ctx.beginPath();ctx.moveTo(curX,0);ctx.lineTo(curX,H);ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,curY);ctx.lineTo(W,curY);ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle='#ffffff';
+  ctx.fillStyle='#f0ddd0';
   ctx.beginPath();ctx.arc(curX,curY,5,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.stroke();
 
   // Axis labels
-  ctx.fillStyle='var(--text-dim)';
+  ctx.fillStyle='#9a7e6e';
   ctx.font='12px system-ui';
   ctx.textAlign='center';
-  ctx.fillStyle='#aaa';
   ctx.fillText(INPUTS[xi].name,W/2,H-6);
   ctx.save();
   ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);
   ctx.fillText(INPUTS[yi].name,0,0);
   ctx.restore();
 
-  // Tick marks
-  ctx.fillStyle='#888';ctx.font='10px system-ui';
+  ctx.fillStyle='#7a6a5a';ctx.font='10px system-ui';
   ctx.textAlign='center';
   for(let t=0;t<=1;t+=0.25){
     ctx.fillText(t.toFixed(2),t*W,H-18);
@@ -512,9 +636,9 @@ function drawBoundary(canvasId, axisXId, axisYId, showTrainingPoints){
       const py=(1-pt.x[tyi])*H;
       ctx.beginPath();
       ctx.arc(px,py,7,0,Math.PI*2);
-      ctx.fillStyle=pt.y===1?'rgba(255,0,170,0.8)':'rgba(0,229,255,0.8)';
+      ctx.fillStyle=pt.y===1?'rgba(255,77,0,0.85)':'rgba(139,115,85,0.85)';
       ctx.fill();
-      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.strokeStyle='#f0ddd0';ctx.lineWidth=1.5;ctx.stroke();
     });
   }
 }
@@ -547,7 +671,6 @@ document.getElementById('training-canvas').addEventListener('click',e=>{
 function trainStep(){
   if(trainingPoints.length===0)return;
   const lr=parseFloat(document.getElementById('lr-input').value)||0.1;
-  // Gradient descent on binary cross-entropy
   const gradW=new Array(weights.length).fill(0);
   let gradB=0;
   trainingPoints.forEach(pt=>{
@@ -564,7 +687,6 @@ function trainStep(){
   }
   bias-=lr*gradB/n;
   trainSteps++;
-  // Clamp bias slider
   bias=Math.max(-3,Math.min(3,bias));
   document.getElementById('bias-slider').value=bias;
 }
@@ -595,7 +717,6 @@ function updateTrainingStats(){
   });
   const acc=trainingPoints.length>0?(correct/trainingPoints.length*100).toFixed(1):'--';
 
-  // Loss
   let loss=0;
   trainingPoints.forEach(pt=>{
     const pred=Math.max(1e-7,Math.min(1-1e-7,forward(pt.x,weights,bias)));
@@ -605,10 +726,10 @@ function updateTrainingStats(){
 
   let html='';
   INPUTS.forEach((inp,i)=>{
-    const col=weights[i]>=0?'var(--cyan)':'var(--red)';
+    const col=weights[i]>=0?'#ff8c00':'#cc2200';
     html+=`<div class="stat-box"><div class="stat-label">${inp.name.split(' ')[0]} w</div><div class="stat-val" style="color:${col}">${weights[i].toFixed(3)}</div></div>`;
   });
-  html+=`<div class="stat-box"><div class="stat-label">Bias</div><div class="stat-val" style="color:var(--orange)">${bias.toFixed(3)}</div></div>`;
+  html+=`<div class="stat-box"><div class="stat-label">Bias</div><div class="stat-val" style="color:#88aa22">${bias.toFixed(3)}</div></div>`;
   html+=`<div class="stat-box"><div class="stat-label">Steps</div><div class="stat-val">${trainSteps}</div></div>`;
   html+=`<div class="stat-box"><div class="stat-label">Points</div><div class="stat-val">${trainingPoints.length}</div></div>`;
   html+=`<div class="stat-box"><div class="stat-label">Accuracy</div><div class="stat-val">${acc}%</div></div>`;
@@ -627,7 +748,7 @@ function drawSensitivity(){
   ctx.clearRect(0,0,W,H);
 
   // Grid
-  ctx.strokeStyle='#1a1a2e';ctx.lineWidth=1;
+  ctx.strokeStyle='#261a14';ctx.lineWidth=1;
   for(let i=0;i<=10;i++){
     const x=pad.left+i*pw/10;
     const y=pad.top+i*ph/10;
@@ -636,7 +757,7 @@ function drawSensitivity(){
   }
 
   // 50% line
-  ctx.strokeStyle='#ffd700';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.strokeStyle='#ffaa00';ctx.lineWidth=1;ctx.setLineDash([4,4]);
   const y50=pad.top+ph*0.5;
   ctx.beginPath();ctx.moveTo(pad.left,y50);ctx.lineTo(pad.left+pw,y50);ctx.stroke();
   ctx.setLineDash([]);
@@ -659,20 +780,16 @@ function drawSensitivity(){
 
     // Current position marker
     const curX=pad.left+inputs[i]*pw;
-    const curP=forward(inputs,weights,bias);
-    // Actually compute p at current input[i]
-    const curY=pad.top+(1-forward(inputs,weights,bias))*ph;
-    // Better: compute with just this input swept to its current value
     const testI=[...inputs];
     const pAtCur=forward(testI,weights,bias);
     const dotY=pad.top+(1-pAtCur)*ph;
     ctx.fillStyle=COLORS[i];
     ctx.beginPath();ctx.arc(curX,dotY,5,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+    ctx.strokeStyle='#f0ddd0';ctx.lineWidth=1;ctx.stroke();
   });
 
   // Axis labels
-  ctx.fillStyle='#888';ctx.font='11px system-ui';
+  ctx.fillStyle='#7a6a5a';ctx.font='11px system-ui';
   ctx.textAlign='center';
   for(let i=0;i<=4;i++){
     ctx.fillText((i/4).toFixed(2),pad.left+i*pw/4,H-pad.bottom+18);
@@ -697,7 +814,7 @@ function drawInfluenceBars(){
   container.innerHTML=INPUTS.map((inp,i)=>{
     const absW=Math.abs(weights[i]);
     const pct=(absW/maxW*100).toFixed(1);
-    const col=weights[i]>=0?'var(--green)':'var(--red)';
+    const col=weights[i]>=0?'#ff8c00':'#cc2200';
     return `<div class="inf-row">
       <span class="inf-label">${inp.name}</span>
       <div class="inf-bar-wrap"><div class="inf-bar" style="width:${pct}%;background:${col}"></div></div>
