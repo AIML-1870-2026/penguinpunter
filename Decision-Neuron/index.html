@@ -21,7 +21,7 @@ h1,h2,h3{font-weight:600}
 a{color:var(--ember)}
 
 /* Smoke background */
-#smoke-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0.4}
+#smoke-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
 .app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:1rem}
 
 /* Header */
@@ -119,8 +119,8 @@ canvas{border-radius:8px;cursor:crosshair}
 .inf-val{width:50px;font-variant-numeric:tabular-nums;font-weight:600}
 
 /* Fire glow on body edges */
-body::before{content:'';position:fixed;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to top,rgba(255,60,0,.06),transparent);pointer-events:none;z-index:0}
-body::after{content:'';position:fixed;top:0;left:0;right:0;height:80px;background:linear-gradient(to bottom,rgba(60,40,20,.4),transparent);pointer-events:none;z-index:0}
+body::before{content:'';position:fixed;bottom:0;left:0;right:0;height:250px;background:linear-gradient(to top,rgba(255,50,0,.25),rgba(200,40,0,.1),transparent);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;top:0;left:0;right:0;height:200px;background:linear-gradient(to bottom,rgba(40,30,20,.7),rgba(30,20,10,.3),transparent);pointer-events:none;z-index:0}
 </style>
 </head>
 <body>
@@ -231,110 +231,200 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;height:80px;backgroun
 </div>
 
 <script>
-// ========== SMOKE PARTICLE SYSTEM ==========
+// ========== FIRE, SMOKE & EMBER SYSTEM ==========
 (function(){
   const canvas=document.getElementById('smoke-bg');
   const ctx=canvas.getContext('2d');
   let W,H;
+  let time=0;
   function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
   resize();
   window.addEventListener('resize',resize);
 
-  class Particle{
-    constructor(){this.reset()}
-    reset(){
+  // --- FLAME TONGUES (bottom of screen) ---
+  class Flame{
+    constructor(x){
+      this.baseX=x;
+      this.x=x;
+      this.y=H;
+      this.speed=1+Math.random()*2;
+      this.maxH=80+Math.random()*180;
+      this.width=30+Math.random()*50;
+      this.phase=Math.random()*Math.PI*2;
+      this.freq=0.02+Math.random()*0.03;
+    }
+    draw(t){
+      const flicker=Math.sin(t*this.freq+this.phase)*0.3+0.7;
+      const h=this.maxH*flicker;
+      const sway=Math.sin(t*0.01+this.phase)*15;
+      const x=this.baseX+sway;
+
+      // Flame body — layered gradients for depth
+      for(let layer=0;layer<3;layer++){
+        const layerScale=1-layer*0.25;
+        const lw=this.width*layerScale;
+        const lh=h*layerScale;
+        const grad=ctx.createRadialGradient(x,H,0,x,H-lh*0.5,lh);
+        if(layer===0){
+          grad.addColorStop(0,'rgba(255,200,50,0.0)');
+          grad.addColorStop(0.2,'rgba(255,120,0,0.35)');
+          grad.addColorStop(0.6,'rgba(220,50,0,0.2)');
+          grad.addColorStop(1,'rgba(100,10,0,0)');
+        }else if(layer===1){
+          grad.addColorStop(0,'rgba(255,255,100,0.4)');
+          grad.addColorStop(0.3,'rgba(255,160,20,0.3)');
+          grad.addColorStop(0.7,'rgba(200,40,0,0.1)');
+          grad.addColorStop(1,'rgba(80,10,0,0)');
+        }else{
+          grad.addColorStop(0,'rgba(255,255,220,0.5)');
+          grad.addColorStop(0.2,'rgba(255,200,60,0.35)');
+          grad.addColorStop(0.5,'rgba(255,100,0,0.15)');
+          grad.addColorStop(1,'rgba(0,0,0,0)');
+        }
+        ctx.beginPath();
+        ctx.ellipse(x,H,lw,lh,0,0,Math.PI*2);
+        ctx.fillStyle=grad;
+        ctx.fill();
+      }
+    }
+  }
+
+  const flames=[];
+  // Create flames spread across bottom
+  for(let x=-40;x<(typeof window!=='undefined'?window.innerWidth:1400)+40;x+=35+Math.random()*30){
+    flames.push(new Flame(x));
+  }
+
+  // --- THICK SMOKE CLOUDS ---
+  class SmokeCloud{
+    constructor(){this.reset(true)}
+    reset(init){
       this.x=Math.random()*W;
-      this.y=H+Math.random()*100;
-      this.vx=(Math.random()-0.5)*0.4;
-      this.vy=-(0.3+Math.random()*0.8);
-      this.size=20+Math.random()*60;
-      this.life=0;
-      this.maxLife=200+Math.random()*300;
-      // Mix of smoke grey, warm brown, and toxic yellow-green
+      this.y=init?(Math.random()*H):(H+50+Math.random()*100);
+      this.vx=(Math.random()-0.5)*0.5;
+      this.vy=-(0.4+Math.random()*0.7);
+      this.size=60+Math.random()*120;
+      this.maxSize=this.size+100+Math.random()*80;
+      this.life=init?Math.random()*400:0;
+      this.maxLife=350+Math.random()*300;
       const type=Math.random();
-      if(type<0.4){this.r=60;this.g=50;this.b=40}       // smoke
-      else if(type<0.7){this.r=80;this.g=40;this.b=15}   // brown smog
-      else if(type<0.85){this.r=100;this.g=90;this.b=30}  // toxic haze
-      else{this.r=120;this.g=50;this.b=10}                // ember glow
+      if(type<0.3){this.r=50;this.g=45;this.b=40}        // dark smoke
+      else if(type<0.55){this.r=70;this.g=55;this.b=35}   // brown smog
+      else if(type<0.75){this.r=90;this.g=80;this.b=50}   // dirty haze
+      else if(type<0.9){this.r=60;this.g=65;this.b=40}    // toxic green-grey
+      else{this.r=100;this.g=60;this.b=25}                 // warm pollution
+      this.maxAlpha=0.25+Math.random()*0.3;
     }
     update(){
       this.life++;
-      this.x+=this.vx+Math.sin(this.life*0.01)*0.3;
+      this.x+=this.vx+Math.sin(this.life*0.008+this.x*0.001)*0.6;
       this.y+=this.vy;
-      this.size+=0.15;
-      if(this.life>this.maxLife||this.y<-this.size)this.reset();
+      const t=this.life/this.maxLife;
+      this.size=this.size+(this.maxSize-this.size)*t*0.3;
+      if(this.life>this.maxLife||this.y<-this.size)this.reset(false);
     }
     draw(){
       const t=this.life/this.maxLife;
-      const alpha=t<0.1?t*10:(t<0.5?1:(1-t)/0.5);
-      const a=Math.max(0,alpha*0.12);
-      ctx.beginPath();
-      const grad=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size);
+      let alpha;
+      if(t<0.15)alpha=t/0.15;
+      else if(t<0.5)alpha=1;
+      else alpha=(1-t)/0.5;
+      const a=Math.max(0,alpha*this.maxAlpha);
+      const grad=ctx.createRadialGradient(this.x,this.y,this.size*0.1,this.x,this.y,this.size);
       grad.addColorStop(0,`rgba(${this.r},${this.g},${this.b},${a})`);
+      grad.addColorStop(0.5,`rgba(${this.r},${this.g},${this.b},${a*0.6})`);
       grad.addColorStop(1,`rgba(${this.r},${this.g},${this.b},0)`);
+      ctx.beginPath();
       ctx.fillStyle=grad;
       ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
       ctx.fill();
     }
   }
 
-  const particles=[];
-  for(let i=0;i<50;i++){
-    const p=new Particle();
-    p.life=Math.random()*p.maxLife; // stagger
-    particles.push(p);
-  }
+  const smokeClouds=[];
+  for(let i=0;i<80;i++)smokeClouds.push(new SmokeCloud());
 
-  // Ember sparks
+  // --- BRIGHT EMBERS ---
   class Ember{
-    constructor(){this.reset()}
-    reset(){
+    constructor(){this.reset(true)}
+    reset(init){
       this.x=Math.random()*W;
-      this.y=H+10;
-      this.vx=(Math.random()-0.5)*1.5;
-      this.vy=-(1+Math.random()*2);
-      this.size=1+Math.random()*2.5;
-      this.life=0;
-      this.maxLife=80+Math.random()*120;
-      this.brightness=0.5+Math.random()*0.5;
+      this.y=init?(H*0.5+Math.random()*H*0.5):(H+5);
+      this.vx=(Math.random()-0.5)*2;
+      this.vy=-(1.5+Math.random()*3);
+      this.size=1.5+Math.random()*3;
+      this.life=init?Math.random()*150:0;
+      this.maxLife=100+Math.random()*200;
+      this.brightness=0.6+Math.random()*0.4;
+      // Color: bright orange, yellow, or red
+      const c=Math.random();
+      if(c<0.4){this.r=255;this.g=180;this.b=30}       // bright orange
+      else if(c<0.7){this.r=255;this.g=120;this.b=0}    // deep orange
+      else if(c<0.9){this.r=255;this.g=220;this.b=50}   // yellow
+      else{this.r=255;this.g=60;this.b=20}               // red hot
     }
     update(){
       this.life++;
-      this.x+=this.vx+Math.sin(this.life*0.05)*0.5;
+      this.x+=this.vx+Math.sin(this.life*0.05)*0.8;
       this.y+=this.vy;
-      this.vy*=0.995;
-      if(this.life>this.maxLife)this.reset();
+      this.vy*=0.997;
+      this.vx*=0.999;
+      if(this.life>this.maxLife||this.y<-20)this.reset(false);
     }
     draw(){
       const t=this.life/this.maxLife;
-      const alpha=t<0.1?t*10:(1-t);
-      const a=Math.max(0,alpha*this.brightness*0.6);
-      ctx.fillStyle=`rgba(255,${Math.round(100+Math.random()*60)},0,${a})`;
+      let alpha=t<0.05?t/0.05:(1-t);
+      alpha=Math.max(0,alpha*this.brightness);
+      // Glow halo
+      const grad=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.size*4);
+      grad.addColorStop(0,`rgba(${this.r},${this.g},${this.b},${alpha*0.5})`);
+      grad.addColorStop(0.3,`rgba(${this.r},${this.g},${this.b},${alpha*0.15})`);
+      grad.addColorStop(1,`rgba(${this.r},${this.g},${this.b},0)`);
       ctx.beginPath();
+      ctx.fillStyle=grad;
+      ctx.arc(this.x,this.y,this.size*4,0,Math.PI*2);
+      ctx.fill();
+      // Core bright dot
+      ctx.beginPath();
+      ctx.fillStyle=`rgba(${Math.min(255,this.r+50)},${Math.min(255,this.g+50)},${Math.min(255,this.b+30)},${alpha})`;
       ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
       ctx.fill();
     }
   }
 
   const embers=[];
-  for(let i=0;i<30;i++){
-    const e=new Ember();
-    e.life=Math.random()*e.maxLife;
-    embers.push(e);
-  }
+  for(let i=0;i<60;i++)embers.push(new Ember());
 
+  // --- ANIMATION LOOP ---
   function animate(){
+    time++;
     ctx.clearRect(0,0,W,H);
-    // Subtle fire glow at bottom
-    const fireGrad=ctx.createLinearGradient(0,H,0,H-200);
-    fireGrad.addColorStop(0,'rgba(255,60,0,0.04)');
-    fireGrad.addColorStop(0.5,'rgba(180,40,0,0.02)');
+
+    // Big fire glow across bottom
+    const fireGrad=ctx.createLinearGradient(0,H,0,H-350);
+    fireGrad.addColorStop(0,'rgba(255,80,0,0.35)');
+    fireGrad.addColorStop(0.15,'rgba(255,50,0,0.2)');
+    fireGrad.addColorStop(0.35,'rgba(180,30,0,0.1)');
+    fireGrad.addColorStop(0.6,'rgba(80,15,0,0.04)');
     fireGrad.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=fireGrad;
-    ctx.fillRect(0,H-200,W,200);
+    ctx.fillRect(0,H-350,W,350);
 
-    particles.forEach(p=>{p.update();p.draw()});
+    // Smoke haze across top
+    const hazeGrad=ctx.createLinearGradient(0,0,0,H*0.5);
+    hazeGrad.addColorStop(0,'rgba(40,35,25,0.5)');
+    hazeGrad.addColorStop(0.4,'rgba(50,40,30,0.2)');
+    hazeGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=hazeGrad;
+    ctx.fillRect(0,0,W,H*0.5);
+
+    // Draw flames
+    flames.forEach(f=>f.draw(time));
+    // Draw smoke clouds
+    smokeClouds.forEach(s=>{s.update();s.draw()});
+    // Draw embers on top
     embers.forEach(e=>{e.update();e.draw()});
+
     requestAnimationFrame(animate);
   }
   animate();
