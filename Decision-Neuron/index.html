@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Neuron: Is Using AI Worth It?</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a2e;--border:#2a2a3e;
+  --text:#e0e0f0;--text-dim:#8888aa;--cyan:#00e5ff;--magenta:#ff00aa;
+  --orange:#ff8c00;--gold:#ffd700;--green:#00ff88;--red:#ff4466;
+}
+html{font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;overflow-x:hidden}
+h1,h2,h3{font-weight:600}
+a{color:var(--cyan)}
+
+/* Layout */
+.app{max-width:1400px;margin:0 auto;padding:1rem}
+header{text-align:center;padding:1.5rem 0 1rem}
+header h1{font-size:1.8rem;background:linear-gradient(90deg,var(--cyan),var(--magenta));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header p{color:var(--text-dim);margin-top:.3rem;font-size:.95rem}
+
+.tabs{display:flex;gap:.5rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap}
+.tab{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);padding:.5rem 1.2rem;border-radius:8px;cursor:pointer;transition:all .2s;font-size:.9rem}
+.tab:hover{border-color:var(--cyan);color:var(--text)}
+.tab.active{background:var(--surface2);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.15)}
+
+.panel{display:none}
+.panel.active{display:block}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem}
+.card h3{font-size:1rem;margin-bottom:.8rem;color:var(--cyan)}
+
+/* Main neuron panel */
+.neuron-layout{display:grid;grid-template-columns:280px 1fr 280px;gap:1rem;align-items:start}
+@media(max-width:960px){.neuron-layout{grid-template-columns:1fr;}}
+
+/* Sliders */
+.slider-group{margin-bottom:1rem}
+.slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;font-size:.85rem}
+.slider-label .name{color:var(--text)}
+.slider-label .value{color:var(--cyan);font-weight:600;font-variant-numeric:tabular-nums}
+.weight-badge{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:0 .4rem;font-size:.75rem;color:var(--gold);margin-left:.5rem}
+.slider-desc{font-size:.75rem;color:var(--text-dim);margin-bottom:.2rem}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:var(--surface2);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 8px rgba(0,229,255,.4)}
+.bias-slider input[type=range]::-webkit-slider-thumb{background:var(--orange);box-shadow:0 0 8px rgba(255,140,0,.4)}
+
+/* Neuron SVG */
+.neuron-viz{display:flex;justify-content:center;align-items:center;min-height:360px}
+.neuron-viz svg text{font-family:'Segoe UI',system-ui,sans-serif}
+
+/* Math panel */
+.math-row{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.85rem;font-variant-numeric:tabular-nums}
+.math-row:last-child{border-bottom:none}
+.math-row .label{color:var(--text-dim)}
+.math-row .val{font-weight:600}
+.math-row .val.pos{color:var(--cyan)}
+.math-row .val.neg{color:var(--red)}
+.formula{background:var(--surface2);border-radius:8px;padding:.8rem;font-family:'Courier New',monospace;font-size:.85rem;margin-bottom:.8rem;text-align:center;color:var(--gold)}
+
+/* Output display */
+.output-display{text-align:center;padding:1rem;margin-top:.5rem}
+.output-prob{font-size:2.5rem;font-weight:700;font-variant-numeric:tabular-nums;transition:color .3s}
+.output-label{font-size:1rem;margin-top:.3rem;font-weight:500;transition:color .3s}
+
+/* Bias bar */
+.bias-bar{margin-top:.5rem}
+.bias-bar .slider-label .value{color:var(--orange)}
+
+/* Decision Boundary */
+.boundary-controls{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.boundary-controls label{font-size:.85rem;color:var(--text-dim)}
+.boundary-controls select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .5rem;border-radius:6px;font-size:.85rem}
+.canvas-wrap{position:relative;display:flex;justify-content:center}
+canvas{border-radius:8px;cursor:crosshair}
+
+/* Training */
+.training-controls{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.45rem 1rem;border-radius:8px;cursor:pointer;font-size:.85rem;transition:all .2s}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{border-color:var(--cyan);color:var(--cyan)}
+.btn.danger{border-color:var(--red);color:var(--red)}
+.btn.yes-btn{border-color:var(--magenta);color:var(--magenta)}
+.btn.yes-btn.active,.btn.no-btn.active{background:var(--surface);font-weight:700}
+.btn.no-btn{border-color:var(--cyan);color:var(--cyan)}
+.training-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.5rem;margin-top:.8rem}
+.stat-box{background:var(--surface2);border-radius:8px;padding:.5rem .7rem;text-align:center}
+.stat-box .stat-label{font-size:.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em}
+.stat-box .stat-val{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--gold)}
+.lr-control{display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:var(--text-dim)}
+.lr-control input{width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.2rem .4rem;border-radius:4px;font-size:.85rem;text-align:center}
+
+/* Sensitivity */
+.sensitivity-chart{display:flex;justify-content:center}
+.legend{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;margin-top:.8rem}
+.legend-item{display:flex;align-items:center;gap:.3rem;font-size:.8rem}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+
+/* Influence bars */
+.influence-bars{margin-top:1rem}
+.inf-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;font-size:.85rem}
+.inf-label{width:140px;text-align:right;color:var(--text-dim)}
+.inf-bar-wrap{flex:1;height:20px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative}
+.inf-bar{height:100%;border-radius:4px;transition:width .3s}
+.inf-val{width:50px;font-variant-numeric:tabular-nums;font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Decision Neuron: Is Using AI Worth It?</h1>
+    <p>Explore how a single neuron makes decisions with interactive controls, training, and analysis</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="neuron">Neuron</button>
+    <button class="tab" data-tab="boundary">Decision Boundary</button>
+    <button class="tab" data-tab="training">Training Mode</button>
+    <button class="tab" data-tab="sensitivity">Sensitivity</button>
+  </div>
+
+  <!-- PANEL 1: Interactive Neuron -->
+  <div class="panel active" id="panel-neuron">
+    <div class="neuron-layout">
+      <!-- Left: Inputs -->
+      <div class="card" id="input-panel">
+        <h3>Inputs</h3>
+        <div id="sliders-container"></div>
+      </div>
+      <!-- Center: Visualization -->
+      <div class="card">
+        <h3>Neuron Visualization</h3>
+        <div class="neuron-viz" id="neuron-viz"></div>
+        <div class="output-display">
+          <div class="output-prob" id="output-prob">50.0%</div>
+          <div class="output-label" id="output-label">Probably worth it</div>
+        </div>
+        <div class="bias-bar">
+          <div class="slider-label">
+            <span class="name">AI Optimism (Bias)</span>
+            <span class="value" id="bias-val">+0.50</span>
+          </div>
+          <div class="bias-slider">
+            <input type="range" id="bias-slider" min="-3" max="3" step="0.05" value="0.5">
+          </div>
+        </div>
+      </div>
+      <!-- Right: Math -->
+      <div class="card" id="math-panel">
+        <h3>Math Breakdown</h3>
+        <div class="formula">z = &Sigma;(x<sub>i</sub> &middot; w<sub>i</sub>) + b</div>
+        <div class="formula">&sigma;(z) = 1 / (1 + e<sup>-z</sup>)</div>
+        <div id="math-breakdown"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 2: Decision Boundary -->
+  <div class="panel" id="panel-boundary">
+    <div class="card">
+      <h3>Decision Boundary Visualizer</h3>
+      <div class="boundary-controls">
+        <label>X-Axis: <select id="axis-x"></select></label>
+        <label>Y-Axis: <select id="axis-y"></select></label>
+        <span style="color:var(--text-dim);font-size:.8rem">Non-selected inputs use slider values</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="boundary-canvas" width="500" height="500"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 3: Training Mode -->
+  <div class="panel" id="panel-training">
+    <div class="card">
+      <h3>Training Mode</h3>
+      <div class="training-controls">
+        <button class="btn yes-btn active" id="label-yes">Worth It (Yes)</button>
+        <button class="btn no-btn" id="label-no">Not Worth It (No)</button>
+        <span style="width:1rem"></span>
+        <button class="btn primary" id="btn-step">Step</button>
+        <button class="btn primary" id="btn-train">Train (50 steps)</button>
+        <button class="btn danger" id="btn-reset">Reset</button>
+        <div class="lr-control">
+          <label>LR:</label>
+          <input type="number" id="lr-input" value="0.1" min="0.001" max="2" step="0.01">
+        </div>
+      </div>
+      <p style="font-size:.8rem;color:var(--text-dim);margin-bottom:.8rem">Click the heatmap to add training points. The neuron will learn from your examples.</p>
+      <div class="boundary-controls">
+        <label>X-Axis: <select id="train-axis-x"></select></label>
+        <label>Y-Axis: <select id="train-axis-y"></select></label>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="training-canvas" width="500" height="500"></canvas>
+      </div>
+      <div class="training-stats" id="training-stats"></div>
+    </div>
+  </div>
+
+  <!-- PANEL 4: Sensitivity -->
+  <div class="panel" id="panel-sensitivity">
+    <div class="card">
+      <h3>Sensitivity Analysis — Input Sweep</h3>
+      <div class="sensitivity-chart">
+        <canvas id="sensitivity-canvas" width="600" height="350"></canvas>
+      </div>
+      <div class="legend" id="sensitivity-legend"></div>
+    </div>
+    <div class="card">
+      <h3>Input Influence Ranking</h3>
+      <div class="influence-bars" id="influence-bars"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== STATE ==========
+const INPUTS = [
+  {name:'Task Complexity', desc:'How much AI actually helps with this task', defaultWeight:0.8},
+  {name:'Time Saved', desc:'Efficiency gain from using AI', defaultWeight:0.6},
+  {name:'Environmental Cost', desc:'Energy usage / environmental impact', defaultWeight:-0.9},
+  {name:'Alternative Difficulty', desc:'How hard it is to do the task without AI', defaultWeight:0.5},
+  {name:'Task Importance', desc:'How much it matters to get this task right', defaultWeight:0.7},
+];
+const COLORS = ['#00e5ff','#00ff88','#ff4466','#aa88ff','#ffd700'];
+
+let weights = INPUTS.map(i=>i.defaultWeight);
+let bias = 0.5;
+let inputs = INPUTS.map(()=>0.5);
+let trainingPoints = [];
+let trainLabel = 1; // 1=yes, 0=no
+let trainSteps = 0;
+let learningRate = 0.1;
+
+// ========== MATH ==========
+function sigmoid(z){return 1/(1+Math.exp(-z))}
+function computeZ(x,w,b){let z=b;for(let i=0;i<x.length;i++)z+=x[i]*w[i];return z}
+function forward(x,w,b){return sigmoid(computeZ(x,w,b))}
+
+// ========== TABS ==========
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+    update();
+  });
+});
+
+// ========== BUILD SLIDERS ==========
+const slidersContainer = document.getElementById('sliders-container');
+INPUTS.forEach((inp,i)=>{
+  const div = document.createElement('div');
+  div.className = 'slider-group';
+  div.innerHTML = `
+    <div class="slider-label">
+      <span class="name">${inp.name}<span class="weight-badge" id="wb-${i}">w: ${weights[i].toFixed(2)}</span></span>
+      <span class="value" id="sv-${i}">0.50</span>
+    </div>
+    <div class="slider-desc">${inp.desc}</div>
+    <input type="range" min="0" max="1" step="0.01" value="0.5" id="sl-${i}">
+  `;
+  slidersContainer.appendChild(div);
+  div.querySelector('input').addEventListener('input',e=>{
+    inputs[i]=parseFloat(e.target.value);
+    update();
+  });
+});
+
+document.getElementById('bias-slider').addEventListener('input',e=>{
+  bias=parseFloat(e.target.value);
+  update();
+});
+
+// ========== AXIS DROPDOWNS ==========
+function populateDropdowns(){
+  ['axis-x','axis-y','train-axis-x','train-axis-y'].forEach(id=>{
+    const sel=document.getElementById(id);
+    sel.innerHTML='';
+    INPUTS.forEach((inp,i)=>{
+      const opt=document.createElement('option');
+      opt.value=i;opt.textContent=inp.name;
+      sel.appendChild(opt);
+    });
+  });
+  document.getElementById('axis-x').value=0;
+  document.getElementById('axis-y').value=2;
+  document.getElementById('train-axis-x').value=0;
+  document.getElementById('train-axis-y').value=2;
+}
+populateDropdowns();
+
+['axis-x','axis-y','train-axis-x','train-axis-y'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>update());
+});
+
+// ========== NEURON SVG ==========
+function drawNeuron(){
+  const container=document.getElementById('neuron-viz');
+  const w=container.clientWidth||500,h=360;
+  const prob=forward(inputs,weights,bias);
+  const hue=prob>=0.5?`rgba(255,0,170,${0.3+prob*0.5})`:`rgba(0,229,255,${0.3+(1-prob)*0.5})`;
+
+  let svg=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+  const cx=w/2, cy=h/2, nr=36;
+  const startX=60, endX=w-60;
+
+  // Input nodes
+  INPUTS.forEach((inp,i)=>{
+    const iy=40+i*(h-80)/(INPUTS.length-1);
+    const absW=Math.abs(weights[i]);
+    const strokeW=1+absW*4;
+    const col=weights[i]>=0?'#00e5ff':'#ff4466';
+    const opacity=0.3+absW*0.6;
+    svg+=`<line x1="${startX}" y1="${iy}" x2="${cx}" y2="${cy}" stroke="${col}" stroke-width="${strokeW}" opacity="${opacity}"/>`;
+    svg+=`<circle cx="${startX}" cy="${iy}" r="18" fill="var(--surface2)" stroke="${COLORS[i]}" stroke-width="2"/>`;
+    svg+=`<text x="${startX}" y="${iy+4}" text-anchor="middle" fill="${COLORS[i]}" font-size="11" font-weight="600">${inputs[i].toFixed(2)}</text>`;
+    // Label
+    const shortName=inp.name.split(' ').map(w=>w[0]).join('');
+    svg+=`<text x="${startX}" y="${iy-24}" text-anchor="middle" fill="var(--text-dim)" font-size="10">${shortName}</text>`;
+  });
+
+  // Central neuron with glow
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${nr+10}" fill="none" stroke="${hue}" stroke-width="2" opacity="0.3"/>`;
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${nr}" fill="var(--surface2)" stroke="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" stroke-width="3"/>`;
+  svg+=`<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="700">&sigma;</text>`;
+  svg+=`<text x="${cx}" y="${cy+14}" text-anchor="middle" fill="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" font-size="11" font-weight="600">${(prob*100).toFixed(1)}%</text>`;
+
+  // Output arrow
+  svg+=`<line x1="${cx+nr+4}" y1="${cy}" x2="${endX-20}" y2="${cy}" stroke="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" stroke-width="3" opacity="0.7"/>`;
+  // Output node
+  svg+=`<circle cx="${endX}" cy="${cy}" r="24" fill="var(--surface2)" stroke="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" stroke-width="2.5"/>`;
+  const outText=prob>=0.5?'YES':'NO';
+  svg+=`<text x="${endX}" y="${cy+5}" text-anchor="middle" fill="${prob>=0.5?'var(--magenta)':'var(--cyan)'}" font-size="14" font-weight="700">${outText}</text>`;
+
+  svg+=`</svg>`;
+  container.innerHTML=svg;
+}
+
+// ========== OUTPUT DISPLAY ==========
+function updateOutput(){
+  const prob=forward(inputs,weights,bias);
+  const pEl=document.getElementById('output-prob');
+  const lEl=document.getElementById('output-label');
+  pEl.textContent=(prob*100).toFixed(1)+'%';
+  let label,color;
+  if(prob>=0.7){label='Definitely worth it';color='var(--magenta)'}
+  else if(prob>=0.5){label='Probably worth it';color='var(--magenta)'}
+  else if(prob>=0.3){label='Probably not worth it';color='var(--cyan)'}
+  else{label='Not worth it';color='var(--cyan)'}
+  pEl.style.color=color;
+  lEl.style.color=color;
+  lEl.textContent=label;
+}
+
+// ========== MATH BREAKDOWN ==========
+function updateMath(){
+  const panel=document.getElementById('math-breakdown');
+  let html='';
+  let z=bias;
+  INPUTS.forEach((inp,i)=>{
+    const contrib=inputs[i]*weights[i];
+    z+=contrib;
+    const cls=contrib>=0?'pos':'neg';
+    html+=`<div class="math-row"><span class="label">${inp.name.split(' ')[0]}: ${inputs[i].toFixed(2)} &times; ${weights[i].toFixed(2)}</span><span class="val ${cls}">${contrib>=0?'+':''}${contrib.toFixed(3)}</span></div>`;
+  });
+  const bCls=bias>=0?'pos':'neg';
+  html+=`<div class="math-row"><span class="label">Bias</span><span class="val ${bCls}">${bias>=0?'+':''}${bias.toFixed(3)}</span></div>`;
+  html+=`<div class="math-row" style="border-top:2px solid var(--border);padding-top:.5rem"><span class="label" style="color:var(--gold)">z = </span><span class="val" style="color:var(--gold)">${z.toFixed(4)}</span></div>`;
+  const out=sigmoid(z);
+  html+=`<div class="math-row"><span class="label" style="color:var(--gold)">&sigma;(z) = </span><span class="val" style="color:${out>=0.5?'var(--magenta)':'var(--cyan)'}">${out.toFixed(4)}</span></div>`;
+  panel.innerHTML=html;
+}
+
+// ========== WEIGHT BADGES & SLIDER VALUES ==========
+function updateSliderDisplay(){
+  INPUTS.forEach((inp,i)=>{
+    document.getElementById('sv-'+i).textContent=inputs[i].toFixed(2);
+    const wb=document.getElementById('wb-'+i);
+    wb.textContent='w: '+weights[i].toFixed(2);
+    wb.style.color=weights[i]>=0?'var(--cyan)':'var(--red)';
+  });
+  document.getElementById('bias-val').textContent=(bias>=0?'+':'')+bias.toFixed(2);
+}
+
+// ========== DECISION BOUNDARY HEATMAP ==========
+function drawBoundary(canvasId, axisXId, axisYId, showTrainingPoints){
+  const canvas=document.getElementById(canvasId);
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const xi=parseInt(document.getElementById(axisXId).value);
+  const yi=parseInt(document.getElementById(axisYId).value);
+  const res=100;
+  const cellW=W/res, cellH=H/res;
+
+  const imgData=ctx.createImageData(W,H);
+
+  for(let py=0;py<res;py++){
+    for(let px=0;px<res;px++){
+      const xv=px/(res-1);
+      const yv=1-py/(res-1);
+      const testInputs=[...inputs];
+      testInputs[xi]=xv;
+      testInputs[yi]=yv;
+      const p=forward(testInputs,weights,bias);
+
+      let r,g,b;
+      if(p<0.5){
+        const t=p/0.5;
+        r=Math.round(30+t*225);
+        g=Math.round(60+t*195);
+        b=Math.round(200+t*55);
+      } else {
+        const t=(p-0.5)/0.5;
+        r=Math.round(255);
+        g=Math.round(255-t*255);
+        b=Math.round(255-t*85);
+      }
+
+      // Fill pixel block
+      for(let dy=0;dy<Math.ceil(H/res);dy++){
+        for(let dx=0;dx<Math.ceil(W/res);dx++){
+          const ix=Math.floor(px*W/res)+dx;
+          const iy=Math.floor(py*H/res)+dy;
+          if(ix<W&&iy<H){
+            const idx=(iy*W+ix)*4;
+            imgData.data[idx]=r;
+            imgData.data[idx+1]=g;
+            imgData.data[idx+2]=b;
+            imgData.data[idx+3]=255;
+          }
+        }
+      }
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+
+  // Decision boundary contour (gold line at 50%)
+  ctx.strokeStyle='#ffd700';
+  ctx.lineWidth=2.5;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  let started=false;
+  for(let px=0;px<res;px++){
+    const xv=px/(res-1);
+    // Find y where p=0.5 using binary search
+    let lo=0,hi=1,found=false,yv=0.5;
+    for(let iter=0;iter<30;iter++){
+      const mid=(lo+hi)/2;
+      const testInputs=[...inputs];
+      testInputs[xi]=xv;testInputs[yi]=mid;
+      const p=forward(testInputs,weights,bias);
+      if(p>0.5)hi=mid;else lo=mid;
+      if(Math.abs(p-0.5)<0.001){found=true;yv=mid;break}
+    }
+    yv=(lo+hi)/2;
+    if(yv>0.01&&yv<0.99){
+      const sx=px*W/res;
+      const sy=(1-yv)*H;
+      if(!started){ctx.moveTo(sx,sy);started=true}else ctx.lineTo(sx,sy);
+    }
+  }
+  ctx.stroke();
+
+  // Crosshair for current position
+  const curX=inputs[xi]*W;
+  const curY=(1-inputs[yi])*H;
+  ctx.strokeStyle='#ffffff';
+  ctx.lineWidth=1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(curX,0);ctx.lineTo(curX,H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,curY);ctx.lineTo(W,curY);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#ffffff';
+  ctx.beginPath();ctx.arc(curX,curY,5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle='var(--text-dim)';
+  ctx.font='12px system-ui';
+  ctx.textAlign='center';
+  ctx.fillStyle='#aaa';
+  ctx.fillText(INPUTS[xi].name,W/2,H-6);
+  ctx.save();
+  ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText(INPUTS[yi].name,0,0);
+  ctx.restore();
+
+  // Tick marks
+  ctx.fillStyle='#888';ctx.font='10px system-ui';
+  ctx.textAlign='center';
+  for(let t=0;t<=1;t+=0.25){
+    ctx.fillText(t.toFixed(2),t*W,H-18);
+  }
+  ctx.textAlign='right';
+  for(let t=0;t<=1;t+=0.25){
+    ctx.fillText(t.toFixed(2),32,(1-t)*H+4);
+  }
+
+  // Training points
+  if(showTrainingPoints){
+    const txi=parseInt(document.getElementById('train-axis-x').value);
+    const tyi=parseInt(document.getElementById('train-axis-y').value);
+    trainingPoints.forEach(pt=>{
+      const px=pt.x[txi]*W;
+      const py=(1-pt.x[tyi])*H;
+      ctx.beginPath();
+      ctx.arc(px,py,7,0,Math.PI*2);
+      ctx.fillStyle=pt.y===1?'rgba(255,0,170,0.8)':'rgba(0,229,255,0.8)';
+      ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    });
+  }
+}
+
+// ========== TRAINING ==========
+document.getElementById('label-yes').addEventListener('click',()=>{
+  trainLabel=1;
+  document.getElementById('label-yes').classList.add('active');
+  document.getElementById('label-no').classList.remove('active');
+});
+document.getElementById('label-no').addEventListener('click',()=>{
+  trainLabel=0;
+  document.getElementById('label-no').classList.add('active');
+  document.getElementById('label-yes').classList.remove('active');
+});
+
+document.getElementById('training-canvas').addEventListener('click',e=>{
+  const rect=e.target.getBoundingClientRect();
+  const px=(e.clientX-rect.left)/rect.width;
+  const py=1-(e.clientY-rect.top)/rect.height;
+  const xi=parseInt(document.getElementById('train-axis-x').value);
+  const yi=parseInt(document.getElementById('train-axis-y').value);
+  const point=[...inputs];
+  point[xi]=Math.max(0,Math.min(1,px));
+  point[yi]=Math.max(0,Math.min(1,py));
+  trainingPoints.push({x:point,y:trainLabel});
+  update();
+});
+
+function trainStep(){
+  if(trainingPoints.length===0)return;
+  const lr=parseFloat(document.getElementById('lr-input').value)||0.1;
+  // Gradient descent on binary cross-entropy
+  const gradW=new Array(weights.length).fill(0);
+  let gradB=0;
+  trainingPoints.forEach(pt=>{
+    const pred=forward(pt.x,weights,bias);
+    const err=pred-pt.y;
+    for(let i=0;i<weights.length;i++){
+      gradW[i]+=err*pt.x[i];
+    }
+    gradB+=err;
+  });
+  const n=trainingPoints.length;
+  for(let i=0;i<weights.length;i++){
+    weights[i]-=lr*gradW[i]/n;
+  }
+  bias-=lr*gradB/n;
+  trainSteps++;
+  // Clamp bias slider
+  bias=Math.max(-3,Math.min(3,bias));
+  document.getElementById('bias-slider').value=bias;
+}
+
+document.getElementById('btn-step').addEventListener('click',()=>{trainStep();update()});
+document.getElementById('btn-train').addEventListener('click',()=>{
+  for(let i=0;i<50;i++)trainStep();
+  update();
+});
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  weights=INPUTS.map(i=>i.defaultWeight);
+  bias=0.5;
+  trainingPoints=[];
+  trainSteps=0;
+  document.getElementById('bias-slider').value=bias;
+  update();
+});
+document.getElementById('lr-input').addEventListener('change',e=>{
+  learningRate=parseFloat(e.target.value)||0.1;
+});
+
+function updateTrainingStats(){
+  const container=document.getElementById('training-stats');
+  let correct=0;
+  trainingPoints.forEach(pt=>{
+    const pred=forward(pt.x,weights,bias);
+    if((pred>=0.5&&pt.y===1)||(pred<0.5&&pt.y===0))correct++;
+  });
+  const acc=trainingPoints.length>0?(correct/trainingPoints.length*100).toFixed(1):'--';
+
+  // Loss
+  let loss=0;
+  trainingPoints.forEach(pt=>{
+    const pred=Math.max(1e-7,Math.min(1-1e-7,forward(pt.x,weights,bias)));
+    loss+=-(pt.y*Math.log(pred)+(1-pt.y)*Math.log(1-pred));
+  });
+  loss=trainingPoints.length>0?(loss/trainingPoints.length).toFixed(4):'--';
+
+  let html='';
+  INPUTS.forEach((inp,i)=>{
+    const col=weights[i]>=0?'var(--cyan)':'var(--red)';
+    html+=`<div class="stat-box"><div class="stat-label">${inp.name.split(' ')[0]} w</div><div class="stat-val" style="color:${col}">${weights[i].toFixed(3)}</div></div>`;
+  });
+  html+=`<div class="stat-box"><div class="stat-label">Bias</div><div class="stat-val" style="color:var(--orange)">${bias.toFixed(3)}</div></div>`;
+  html+=`<div class="stat-box"><div class="stat-label">Steps</div><div class="stat-val">${trainSteps}</div></div>`;
+  html+=`<div class="stat-box"><div class="stat-label">Points</div><div class="stat-val">${trainingPoints.length}</div></div>`;
+  html+=`<div class="stat-box"><div class="stat-label">Accuracy</div><div class="stat-val">${acc}%</div></div>`;
+  html+=`<div class="stat-box"><div class="stat-label">Loss</div><div class="stat-val">${loss}</div></div>`;
+  container.innerHTML=html;
+}
+
+// ========== SENSITIVITY ANALYSIS ==========
+function drawSensitivity(){
+  const canvas=document.getElementById('sensitivity-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const pad={top:20,right:20,bottom:40,left:50};
+  const pw=W-pad.left-pad.right, ph=H-pad.top-pad.bottom;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='#1a1a2e';ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){
+    const x=pad.left+i*pw/10;
+    const y=pad.top+i*ph/10;
+    ctx.beginPath();ctx.moveTo(x,pad.top);ctx.lineTo(x,pad.top+ph);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(pad.left+pw,y);ctx.stroke();
+  }
+
+  // 50% line
+  ctx.strokeStyle='#ffd700';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  const y50=pad.top+ph*0.5;
+  ctx.beginPath();ctx.moveTo(pad.left,y50);ctx.lineTo(pad.left+pw,y50);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Curves
+  const steps=100;
+  INPUTS.forEach((inp,i)=>{
+    ctx.strokeStyle=COLORS[i];ctx.lineWidth=2.5;
+    ctx.beginPath();
+    for(let s=0;s<=steps;s++){
+      const xv=s/steps;
+      const testInputs=[...inputs];
+      testInputs[i]=xv;
+      const p=forward(testInputs,weights,bias);
+      const x=pad.left+xv*pw;
+      const y=pad.top+(1-p)*ph;
+      if(s===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    // Current position marker
+    const curX=pad.left+inputs[i]*pw;
+    const curP=forward(inputs,weights,bias);
+    // Actually compute p at current input[i]
+    const curY=pad.top+(1-forward(inputs,weights,bias))*ph;
+    // Better: compute with just this input swept to its current value
+    const testI=[...inputs];
+    const pAtCur=forward(testI,weights,bias);
+    const dotY=pad.top+(1-pAtCur)*ph;
+    ctx.fillStyle=COLORS[i];
+    ctx.beginPath();ctx.arc(curX,dotY,5,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+  });
+
+  // Axis labels
+  ctx.fillStyle='#888';ctx.font='11px system-ui';
+  ctx.textAlign='center';
+  for(let i=0;i<=4;i++){
+    ctx.fillText((i/4).toFixed(2),pad.left+i*pw/4,H-pad.bottom+18);
+  }
+  ctx.textAlign='right';
+  for(let i=0;i<=4;i++){
+    ctx.fillText((i/4*100).toFixed(0)+'%',pad.left-8,pad.top+(1-i/4)*ph+4);
+  }
+  ctx.textAlign='center';
+  ctx.fillText('Input Value',W/2,H-5);
+  ctx.save();ctx.translate(12,H/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('Output Probability',0,0);ctx.restore();
+
+  // Legend
+  const legend=document.getElementById('sensitivity-legend');
+  legend.innerHTML=INPUTS.map((inp,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${COLORS[i]}"></div>${inp.name}</div>`).join('');
+}
+
+function drawInfluenceBars(){
+  const container=document.getElementById('influence-bars');
+  const maxW=Math.max(...weights.map(Math.abs),0.01);
+  container.innerHTML=INPUTS.map((inp,i)=>{
+    const absW=Math.abs(weights[i]);
+    const pct=(absW/maxW*100).toFixed(1);
+    const col=weights[i]>=0?'var(--green)':'var(--red)';
+    return `<div class="inf-row">
+      <span class="inf-label">${inp.name}</span>
+      <div class="inf-bar-wrap"><div class="inf-bar" style="width:${pct}%;background:${col}"></div></div>
+      <span class="inf-val" style="color:${col}">${weights[i]>=0?'+':''}${weights[i].toFixed(3)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ========== MASTER UPDATE ==========
+function update(){
+  updateSliderDisplay();
+  updateOutput();
+  drawNeuron();
+  updateMath();
+
+  const activeTab=document.querySelector('.tab.active').dataset.tab;
+  if(activeTab==='boundary'){
+    drawBoundary('boundary-canvas','axis-x','axis-y',false);
+  }
+  if(activeTab==='training'){
+    drawBoundary('training-canvas','train-axis-x','train-axis-y',true);
+    updateTrainingStats();
+  }
+  if(activeTab==='sensitivity'){
+    drawSensitivity();
+    drawInfluenceBars();
+  }
+}
+
+// Initial render
+update();
+window.addEventListener('resize',()=>update());
+</script>
+</body>
+</html>
