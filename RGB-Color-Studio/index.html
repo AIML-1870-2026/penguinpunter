@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RGB Color Studio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d0d;
+    color: #e0e0e0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    padding: 1.2rem 0 0.4rem;
+    letter-spacing: 0.05em;
+    background: linear-gradient(90deg, #ff4444, #44ff44, #4444ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 1rem;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  @media (max-width: 860px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: #161616;
+    border-radius: 16px;
+    padding: 1.2rem;
+    border: 1px solid #222;
+  }
+
+  .panel-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    color: #ccc;
+  }
+
+  canvas { display: block; border-radius: 12px; }
+
+  /* Sliders */
+  .slider-group { margin-top: 1rem; }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .slider-label {
+    width: 1.2rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .slider-label.r { color: #ff4444; }
+  .slider-label.g { color: #44ff44; }
+  .slider-label.b { color: #4488ff; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #333;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #fff;
+  }
+  #sliderR::-webkit-slider-thumb { background: #ff4444; }
+  #sliderG::-webkit-slider-thumb { background: #44ff44; }
+  #sliderB::-webkit-slider-thumb { background: #4488ff; }
+
+  .slider-val {
+    width: 2.4rem;
+    text-align: right;
+    font-size: 0.8rem;
+    color: #999;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .color-output {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: 0.8rem;
+  }
+  .color-swatch {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    border: 2px solid #333;
+    transition: background 0.15s;
+  }
+  .hex-code {
+    font-size: 1.3rem;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  /* Accessibility panel */
+  .access-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    max-width: 1200px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem 1.5rem;
+  }
+  @media (max-width: 860px) {
+    .access-grid { grid-template-columns: 1fr; }
+  }
+
+  .color-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .color-input-row label {
+    font-size: 0.8rem;
+    color: #999;
+    width: 3rem;
+  }
+  input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 36px;
+    height: 28px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+  .contrast-result {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+  }
+  .contrast-ratio {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0.3rem 0;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .badge.pass { background: #22c55e; color: #000; }
+  .badge.fail { background: #ef4444; color: #fff; }
+
+  select, button {
+    background: #222;
+    color: #ddd;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  select:hover, button:hover { border-color: #666; }
+
+  .sim-preview {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    align-items: center;
+  }
+  .sim-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #333;
+  }
+  .sim-label {
+    font-size: 0.75rem;
+    color: #888;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .toggle {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    background: #333;
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: #22c55e; }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(18px); }
+  .toggle-label { font-size: 0.8rem; color: #aaa; }
+
+  .palette-chips {
+    display: flex;
+    gap: 6px;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .palette-chip {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    position: relative;
+  }
+  .palette-chip.flagged { border-color: #ef4444; }
+  .palette-chip.flagged::after {
+    content: '!';
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ef4444;
+    color: #fff;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>RGB Color Studio</h1>
+<p class="subtitle">Explore color mixing, accessibility &amp; vision simulation</p>
+
+<div class="main-grid">
+  <!-- Snake Explorer -->
+  <div class="panel">
+    <div class="panel-title">Snake Explorer</div>
+    <canvas id="snakeCanvas" width="520" height="380"></canvas>
+    <div class="slider-group">
+      <div class="slider-row">
+        <span class="slider-label r">R</span>
+        <input type="range" id="sliderR" min="0" max="255" value="255">
+        <span class="slider-val" id="valR">255</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label g">G</span>
+        <input type="range" id="sliderG" min="0" max="255" value="80">
+        <span class="slider-val" id="valG">80</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label b">B</span>
+        <input type="range" id="sliderB" min="0" max="255" value="120">
+        <span class="slider-val" id="valB">120</span>
+      </div>
+    </div>
+    <div class="color-output">
+      <div class="color-swatch" id="colorSwatch"></div>
+      <div class="hex-code" id="hexCode">#FF5078</div>
+    </div>
+  </div>
+
+  <!-- Color Wheel -->
+  <div class="panel">
+    <div class="panel-title">Additive Color Wheel</div>
+    <canvas id="wheelCanvas" width="520" height="520"></canvas>
+  </div>
+</div>
+
+<!-- Accessibility Tools -->
+<div class="access-grid">
+  <!-- Contrast Checker -->
+  <div class="panel">
+    <div class="panel-title">WCAG Contrast Checker</div>
+    <div class="color-input-row">
+      <label>FG</label>
+      <input type="color" id="contrastFG" value="#ffffff">
+      <span id="contrastFGHex" style="font-size:0.8rem;color:#999">#ffffff</span>
+    </div>
+    <div class="color-input-row">
+      <label>BG</label>
+      <input type="color" id="contrastBG" value="#0d0d0d">
+      <span id="contrastBGHex" style="font-size:0.8rem;color:#999">#0d0d0d</span>
+    </div>
+    <button id="useCurrentColor" style="margin-top:0.3rem;font-size:0.75rem;">Use current RGB as FG</button>
+    <div class="contrast-result">
+      <div>Ratio</div>
+      <div class="contrast-ratio" id="contrastRatio">19.54 : 1</div>
+      <div>
+        <span class="badge pass" id="badgeAA">AA Pass</span>
+        <span class="badge pass" id="badgeAAA">AAA Pass</span>
+      </div>
+      <div style="margin-top:0.4rem">
+        <span class="badge pass" id="badgeAALarge">AA Large Pass</span>
+        <span class="badge pass" id="badgeAAALarge">AAA Large Pass</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Blindness Simulator -->
+  <div class="panel">
+    <div class="panel-title">Color Blindness Simulator</div>
+    <select id="cbType">
+      <option value="normal">Normal Vision</option>
+      <option value="protanopia">Protanopia (no red)</option>
+      <option value="deuteranopia">Deuteranopia (no green)</option>
+      <option value="tritanopia">Tritanopia (no blue)</option>
+    </select>
+    <div class="sim-preview">
+      <div>
+        <div class="sim-label">Original</div>
+        <div class="sim-swatch" id="simOriginal"></div>
+      </div>
+      <div style="color:#555;font-size:1.2rem">&#x2192;</div>
+      <div>
+        <div class="sim-label">Simulated</div>
+        <div class="sim-swatch" id="simResult"></div>
+      </div>
+    </div>
+    <div id="simHexes" style="font-size:0.75rem;color:#666;margin-top:0.4rem"></div>
+  </div>
+
+  <!-- Accessible Palette Mode -->
+  <div class="panel">
+    <div class="panel-title">Accessible Palette Mode</div>
+    <div class="toggle-row">
+      <div class="toggle" id="paletteToggle"></div>
+      <span class="toggle-label">Flag low-contrast pairs</span>
+    </div>
+    <div class="color-input-row">
+      <label>BG</label>
+      <input type="color" id="paletteBG" value="#0d0d0d">
+    </div>
+    <div class="palette-chips" id="paletteChips"></div>
+    <div id="paletteWarnings" style="font-size:0.75rem;color:#ef4444;margin-top:0.4rem"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// UTILITIES
+// ============================================================
+function toHex(r, g, b) {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function parseHex(hex) {
+  hex = hex.replace('#', '');
+  return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+}
+
+function relativeLuminance(r, g, b) {
+  const [rs, gs, bs] = [r, g, b].map(c => {
+    c = c / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function contrastRatio(rgb1, rgb2) {
+  const l1 = relativeLuminance(...rgb1);
+  const l2 = relativeLuminance(...rgb2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+// Brettel/Vienot color blindness simulation matrices
+const cbMatrices = {
+  protanopia: [
+    [0.56667, 0.43333, 0.00000],
+    [0.55833, 0.44167, 0.00000],
+    [0.00000, 0.24167, 0.75833]
+  ],
+  deuteranopia: [
+    [0.62500, 0.37500, 0.00000],
+    [0.70000, 0.30000, 0.00000],
+    [0.00000, 0.30000, 0.70000]
+  ],
+  tritanopia: [
+    [0.95000, 0.05000, 0.00000],
+    [0.00000, 0.43333, 0.56667],
+    [0.00000, 0.47500, 0.52500]
+  ]
+};
+
+function simulateCB(r, g, b, type) {
+  if (type === 'normal') return [r, g, b];
+  const m = cbMatrices[type];
+  return [
+    Math.round(m[0][0]*r + m[0][1]*g + m[0][2]*b),
+    Math.round(m[1][0]*r + m[1][1]*g + m[1][2]*b),
+    Math.round(m[2][0]*r + m[2][1]*g + m[2][2]*b)
+  ].map(v => Math.min(255, Math.max(0, v)));
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let currentR = 255, currentG = 80, currentB = 120;
+let targetR = 255, targetG = 80, targetB = 120;
+let interacting = false;
+let lastInteraction = 0;
+
+const sliderR = document.getElementById('sliderR');
+const sliderG = document.getElementById('sliderG');
+const sliderB = document.getElementById('sliderB');
+const valR = document.getElementById('valR');
+const valG = document.getElementById('valG');
+const valB = document.getElementById('valB');
+const colorSwatch = document.getElementById('colorSwatch');
+const hexCode = document.getElementById('hexCode');
+
+// ============================================================
+// SNAKE CANVAS
+// ============================================================
+const snakeCanvas = document.getElementById('snakeCanvas');
+const sctx = snakeCanvas.getContext('2d');
+
+// Make canvas responsive
+function resizeSnakeCanvas() {
+  const rect = snakeCanvas.parentElement.getBoundingClientRect();
+  const w = Math.min(520, rect.width - 40);
+  snakeCanvas.width = w;
+  snakeCanvas.height = Math.round(w * 0.73);
+}
+resizeSnakeCanvas();
+window.addEventListener('resize', resizeSnakeCanvas);
+
+// Build snake as a spiral of scale positions
+function buildSnakeScales() {
+  const cx = snakeCanvas.width / 2;
+  const cy = snakeCanvas.height / 2;
+  const scales = [];
+  const totalScales = 120;
+  const startRadius = 12;
+  const radiusGrowth = 2.8;
+  const angleStep = 0.28;
+
+  for (let i = 0; i < totalScales; i++) {
+    const angle = i * angleStep;
+    const radius = startRadius + i * radiusGrowth;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    scales.push({ x, y, angle, baseRadius: radius, color: [currentR, currentG, currentB], t: 0 });
+  }
+  return scales;
+}
+
+let snakeScales = buildSnakeScales();
+
+// Ripple state
+let rippleStartTime = 0;
+let rippleActive = false;
+let rippleColor = [255, 80, 120];
+let prevColor = [255, 80, 120];
+
+function triggerRipple() {
+  prevColor = [...rippleColor];
+  rippleColor = [currentR, currentG, currentB];
+  rippleStartTime = performance.now();
+  rippleActive = true;
+}
+
+function drawSnake(time) {
+  const w = snakeCanvas.width;
+  const h = snakeCanvas.height;
+  sctx.clearRect(0, 0, w, h);
+
+  // Background glow
+  const grd = sctx.createRadialGradient(w/2, h/2, 10, w/2, h/2, w*0.45);
+  grd.addColorStop(0, `rgba(${currentR}, ${currentG}, ${currentB}, 0.06)`);
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  sctx.fillStyle = grd;
+  sctx.fillRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // Breathing
+  const breathPhase = Math.sin(time * 0.001) * 0.03;
+
+  const totalScales = snakeScales.length;
+  const rippleElapsed = (time - rippleStartTime) / 1000;
+  const rippleSpeed = 80; // scales per second
+
+  for (let i = 0; i < totalScales; i++) {
+    const s = snakeScales[i];
+    const angle = i * 0.28;
+    const baseRadius = 12 + i * 2.8;
+    const radius = baseRadius * (1 + breathPhase);
+
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+
+    // Determine color based on ripple
+    let sr, sg, sb;
+    if (rippleActive) {
+      const ripplePos = rippleElapsed * rippleSpeed;
+      if (i <= ripplePos) {
+        sr = rippleColor[0]; sg = rippleColor[1]; sb = rippleColor[2];
+      } else if (i <= ripplePos + 10) {
+        const t = (i - ripplePos) / 10;
+        sr = Math.round(rippleColor[0] * (1-t) + prevColor[0] * t);
+        sg = Math.round(rippleColor[1] * (1-t) + prevColor[1] * t);
+        sb = Math.round(rippleColor[2] * (1-t) + prevColor[2] * t);
+      } else {
+        sr = prevColor[0]; sg = prevColor[1]; sb = prevColor[2];
+      }
+      if (ripplePos > totalScales + 10) rippleActive = false;
+    } else {
+      sr = rippleColor[0]; sg = rippleColor[1]; sb = rippleColor[2];
+    }
+
+    // Draw scale
+    const scaleSize = 8 + i * 0.15;
+    const scaleAngle = angle + Math.PI / 2;
+
+    sctx.save();
+    sctx.translate(x, y);
+    sctx.rotate(scaleAngle);
+
+    // Shadow/glow
+    sctx.shadowColor = `rgba(${sr}, ${sg}, ${sb}, 0.4)`;
+    sctx.shadowBlur = 6;
+
+    // Scale shape - rounded diamond
+    sctx.beginPath();
+    sctx.moveTo(0, -scaleSize);
+    sctx.quadraticCurveTo(scaleSize * 0.7, -scaleSize * 0.3, scaleSize * 0.5, scaleSize * 0.3);
+    sctx.quadraticCurveTo(0, scaleSize * 0.8, -scaleSize * 0.5, scaleSize * 0.3);
+    sctx.quadraticCurveTo(-scaleSize * 0.7, -scaleSize * 0.3, 0, -scaleSize);
+    sctx.closePath();
+
+    // 3D shading
+    const grad = sctx.createLinearGradient(0, -scaleSize, 0, scaleSize);
+    const lightR = Math.min(255, sr + 40);
+    const lightG = Math.min(255, sg + 40);
+    const lightB = Math.min(255, sb + 40);
+    const darkR = Math.max(0, sr - 50);
+    const darkG = Math.max(0, sg - 50);
+    const darkB = Math.max(0, sb - 50);
+    grad.addColorStop(0, `rgb(${lightR},${lightG},${lightB})`);
+    grad.addColorStop(0.5, `rgb(${sr},${sg},${sb})`);
+    grad.addColorStop(1, `rgb(${darkR},${darkG},${darkB})`);
+    sctx.fillStyle = grad;
+    sctx.fill();
+
+    sctx.shadowBlur = 0;
+    sctx.strokeStyle = `rgba(0,0,0,0.3)`;
+    sctx.lineWidth = 0.5;
+    sctx.stroke();
+
+    sctx.restore();
+  }
+
+  // Draw head (scale 0 is center)
+  const headAngle = 0;
+  const headRadius = 12 * (1 + breathPhase);
+  const hx = cx + Math.cos(0) * headRadius;
+  const hy = cy + Math.sin(0) * headRadius;
+  sctx.save();
+  sctx.translate(hx, hy);
+
+  // Eye
+  sctx.beginPath();
+  sctx.arc(3, -3, 3, 0, Math.PI * 2);
+  sctx.fillStyle = '#ffee44';
+  sctx.fill();
+  sctx.beginPath();
+  sctx.arc(3, -3, 1.5, 0, Math.PI * 2);
+  sctx.fillStyle = '#111';
+  sctx.fill();
+
+  // Tongue flicker
+  if (Math.sin(time * 0.003) > 0.7) {
+    sctx.beginPath();
+    sctx.moveTo(8, 0);
+    sctx.lineTo(16, -3);
+    sctx.moveTo(8, 0);
+    sctx.lineTo(16, 3);
+    sctx.strokeStyle = '#ff4444';
+    sctx.lineWidth = 1.2;
+    sctx.stroke();
+  }
+
+  sctx.restore();
+}
+
+// ============================================================
+// COLOR WHEEL CANVAS
+// ============================================================
+const wheelCanvas = document.getElementById('wheelCanvas');
+const wctx = wheelCanvas.getContext('2d');
+
+function resizeWheelCanvas() {
+  const rect = wheelCanvas.parentElement.getBoundingClientRect();
+  const w = Math.min(520, rect.width - 40);
+  wheelCanvas.width = w;
+  wheelCanvas.height = w;
+}
+resizeWheelCanvas();
+window.addEventListener('resize', resizeWheelCanvas);
+
+function hslToRgb(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [h * 360, s * 100, l * 100];
+}
+
+let wheelRotation = 0;
+
+function drawColorWheel(time) {
+  const w = wheelCanvas.width;
+  const h = wheelCanvas.height;
+  wctx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const outerR = Math.min(cx, cy) - 20;
+  const innerR = outerR * 0.15;
+
+  wheelRotation += 0.002;
+
+  // Draw the wheel with pixel data for smooth gradients
+  const segments = 360;
+  const rings = 60;
+
+  for (let ring = 0; ring < rings; ring++) {
+    const t = ring / (rings - 1); // 0 = outer, 1 = inner
+    const radius = outerR - t * (outerR - innerR);
+    const nextRadius = outerR - Math.min(1, (ring + 1) / (rings - 1)) * (outerR - innerR);
+
+    for (let seg = 0; seg < segments; seg++) {
+      const hue = (seg + wheelRotation * 57.3) % 360;
+      const saturation = 100 * (1 - t * 0.8);
+      const lightness = 50 + t * 45; // moves toward white at center
+
+      const [r, g, b] = hslToRgb(hue, saturation, lightness);
+
+      const a1 = (seg / segments) * Math.PI * 2 - Math.PI / 2;
+      const a2 = ((seg + 1.5) / segments) * Math.PI * 2 - Math.PI / 2;
+
+      wctx.beginPath();
+      wctx.arc(cx, cy, radius, a1, a2);
+      wctx.arc(cx, cy, nextRadius, a2, a1, true);
+      wctx.closePath();
+      wctx.fillStyle = `rgb(${r},${g},${b})`;
+      wctx.fill();
+    }
+  }
+
+  // Center white glow
+  const centerGlow = wctx.createRadialGradient(cx, cy, 0, cx, cy, innerR * 2);
+  centerGlow.addColorStop(0, 'rgba(255,255,255,0.9)');
+  centerGlow.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+  centerGlow.addColorStop(1, 'rgba(255,255,255,0)');
+  wctx.fillStyle = centerGlow;
+  wctx.beginPath();
+  wctx.arc(cx, cy, innerR * 2, 0, Math.PI * 2);
+  wctx.fill();
+
+  // Current color marker
+  const [hue, sat, light] = rgbToHsl(currentR, currentG, currentB);
+  const markerAngle = (hue / 360) * Math.PI * 2 - Math.PI / 2 - wheelRotation;
+  const markerT = 1 - (sat / 100);
+  const markerRadius = outerR - markerT * (outerR - innerR);
+  const mx = cx + Math.cos(markerAngle) * markerRadius;
+  const my = cy + Math.sin(markerAngle) * markerRadius;
+
+  wctx.beginPath();
+  wctx.arc(mx, my, 8, 0, Math.PI * 2);
+  wctx.strokeStyle = '#fff';
+  wctx.lineWidth = 2.5;
+  wctx.stroke();
+  wctx.beginPath();
+  wctx.arc(mx, my, 5, 0, Math.PI * 2);
+  wctx.fillStyle = toHex(currentR, currentG, currentB);
+  wctx.fill();
+
+  // Additive light cones overlay (subtle)
+  const coneAlpha = 0.06;
+  // Red cone
+  wctx.beginPath();
+  wctx.moveTo(cx, cy);
+  wctx.arc(cx, cy, outerR * 0.7, -Math.PI * 0.15 + wheelRotation, Math.PI * 0.15 + wheelRotation);
+  wctx.closePath();
+  wctx.fillStyle = `rgba(255,0,0,${coneAlpha})`;
+  wctx.fill();
+  // Green cone
+  wctx.beginPath();
+  wctx.moveTo(cx, cy);
+  wctx.arc(cx, cy, outerR * 0.7, Math.PI * 0.52 + wheelRotation, Math.PI * 0.82 + wheelRotation);
+  wctx.closePath();
+  wctx.fillStyle = `rgba(0,255,0,${coneAlpha})`;
+  wctx.fill();
+  // Blue cone
+  wctx.beginPath();
+  wctx.moveTo(cx, cy);
+  wctx.arc(cx, cy, outerR * 0.7, Math.PI * 1.18 + wheelRotation, Math.PI * 1.48 + wheelRotation);
+  wctx.closePath();
+  wctx.fillStyle = `rgba(0,100,255,${coneAlpha})`;
+  wctx.fill();
+}
+
+// ============================================================
+// ACCESSIBILITY TOOLS
+// ============================================================
+const contrastFG = document.getElementById('contrastFG');
+const contrastBG = document.getElementById('contrastBG');
+const contrastFGHex = document.getElementById('contrastFGHex');
+const contrastBGHex = document.getElementById('contrastBGHex');
+const contrastRatioEl = document.getElementById('contrastRatio');
+const badgeAA = document.getElementById('badgeAA');
+const badgeAAA = document.getElementById('badgeAAA');
+const badgeAALarge = document.getElementById('badgeAALarge');
+const badgeAAALarge = document.getElementById('badgeAAALarge');
+
+function updateContrast() {
+  const fg = parseHex(contrastFG.value);
+  const bg = parseHex(contrastBG.value);
+  const ratio = contrastRatio(fg, bg);
+  contrastRatioEl.textContent = ratio.toFixed(2) + ' : 1';
+  contrastFGHex.textContent = contrastFG.value;
+  contrastBGHex.textContent = contrastBG.value;
+
+  const setBadge = (el, pass) => {
+    el.className = 'badge ' + (pass ? 'pass' : 'fail');
+    const label = el.id.replace('badge', '').replace('Large', ' Large');
+    el.textContent = label + (pass ? ' Pass' : ' Fail');
+  };
+  setBadge(badgeAA, ratio >= 4.5);
+  setBadge(badgeAAA, ratio >= 7);
+  setBadge(badgeAALarge, ratio >= 3);
+  setBadge(badgeAAALarge, ratio >= 4.5);
+}
+
+contrastFG.addEventListener('input', updateContrast);
+contrastBG.addEventListener('input', updateContrast);
+document.getElementById('useCurrentColor').addEventListener('click', () => {
+  contrastFG.value = toHex(currentR, currentG, currentB);
+  updateContrast();
+});
+updateContrast();
+
+// Color Blindness Simulator
+const cbType = document.getElementById('cbType');
+const simOriginal = document.getElementById('simOriginal');
+const simResult = document.getElementById('simResult');
+const simHexes = document.getElementById('simHexes');
+
+function updateCBSim() {
+  const orig = [currentR, currentG, currentB];
+  const sim = simulateCB(...orig, cbType.value);
+  simOriginal.style.background = toHex(...orig);
+  simResult.style.background = toHex(...sim);
+  simHexes.textContent = toHex(...orig) + ' → ' + toHex(...sim);
+}
+cbType.addEventListener('change', updateCBSim);
+updateCBSim();
+
+// Accessible Palette Mode
+const paletteToggle = document.getElementById('paletteToggle');
+const paletteBG = document.getElementById('paletteBG');
+const paletteChipsEl = document.getElementById('paletteChips');
+const paletteWarnings = document.getElementById('paletteWarnings');
+let paletteEnabled = false;
+
+const paletteColors = [
+  '#ff4444', '#44ff44', '#4488ff', '#ffff44', '#ff44ff', '#44ffff',
+  '#ff8800', '#8844ff'
+];
+
+paletteToggle.addEventListener('click', () => {
+  paletteEnabled = !paletteEnabled;
+  paletteToggle.classList.toggle('on', paletteEnabled);
+  updatePalette();
+});
+
+function updatePalette() {
+  paletteChipsEl.innerHTML = '';
+  paletteWarnings.textContent = '';
+
+  const bg = parseHex(paletteBG.value);
+  const warnings = [];
+
+  paletteColors.forEach((hex, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'palette-chip';
+    chip.style.background = hex;
+
+    if (paletteEnabled) {
+      const rgb = parseHex(hex);
+      const ratio = contrastRatio(rgb, bg);
+      if (ratio < 4.5) {
+        chip.classList.add('flagged');
+        warnings.push(`${hex} (${ratio.toFixed(1)}:1)`);
+      }
+    }
+    paletteChipsEl.appendChild(chip);
+  });
+
+  if (warnings.length > 0) {
+    paletteWarnings.textContent = 'Low contrast: ' + warnings.join(', ');
+  }
+}
+
+paletteBG.addEventListener('input', updatePalette);
+updatePalette();
+
+// ============================================================
+// SLIDER HANDLERS
+// ============================================================
+function onSliderInput() {
+  currentR = parseInt(sliderR.value);
+  currentG = parseInt(sliderG.value);
+  currentB = parseInt(sliderB.value);
+  valR.textContent = currentR;
+  valG.textContent = currentG;
+  valB.textContent = currentB;
+  colorSwatch.style.background = toHex(currentR, currentG, currentB);
+  hexCode.textContent = toHex(currentR, currentG, currentB).toUpperCase();
+  hexCode.style.color = toHex(currentR, currentG, currentB);
+  interacting = true;
+  lastInteraction = performance.now();
+  triggerRipple();
+  updateCBSim();
+}
+
+sliderR.addEventListener('input', onSliderInput);
+sliderG.addEventListener('input', onSliderInput);
+sliderB.addEventListener('input', onSliderInput);
+
+// Initialize display
+colorSwatch.style.background = toHex(currentR, currentG, currentB);
+hexCode.style.color = toHex(currentR, currentG, currentB);
+
+// ============================================================
+// ANIMATION LOOP
+// ============================================================
+function animate(time) {
+  if (performance.now() - lastInteraction > 300) {
+    interacting = false;
+  }
+  drawSnake(time);
+  drawColorWheel(time);
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
