@@ -481,28 +481,6 @@ function resizeSnakeCanvas() {
 resizeSnakeCanvas();
 window.addEventListener('resize', resizeSnakeCanvas);
 
-// Build snake as a spiral of scale positions
-function buildSnakeScales() {
-  const cx = snakeCanvas.width / 2;
-  const cy = snakeCanvas.height / 2;
-  const scales = [];
-  const totalScales = 120;
-  const startRadius = 12;
-  const radiusGrowth = 2.8;
-  const angleStep = 0.28;
-
-  for (let i = 0; i < totalScales; i++) {
-    const angle = i * angleStep;
-    const radius = startRadius + i * radiusGrowth;
-    const x = cx + Math.cos(angle) * radius;
-    const y = cy + Math.sin(angle) * radius;
-    scales.push({ x, y, angle, baseRadius: radius, color: [currentR, currentG, currentB], t: 0 });
-  }
-  return scales;
-}
-
-let snakeScales = buildSnakeScales();
-
 // Ripple state
 let rippleStartTime = 0;
 let rippleActive = false;
@@ -516,128 +494,382 @@ function triggerRipple() {
   rippleActive = true;
 }
 
+// Generate points along the spiral spine
+function getSpinePoints(cx, cy, breathPhase, numPoints) {
+  const points = [];
+  const totalAngle = Math.PI * 7.5; // ~3.75 full coils
+  for (let i = 0; i < numPoints; i++) {
+    const t = i / (numPoints - 1);
+    const angle = t * totalAngle;
+    // Spiral: radius grows from center outward; tail is outermost
+    const minR = 8;
+    const maxR = Math.min(cx, cy) * 0.88;
+    const baseRadius = minR + t * (maxR - minR);
+    const radius = baseRadius * (1 + breathPhase);
+    points.push({
+      x: cx + Math.cos(angle) * radius,
+      y: cy + Math.sin(angle) * radius,
+      angle: angle,
+      t: t
+    });
+  }
+  return points;
+}
+
+// Get the body width at a given t (0=head, 1=tail)
+function bodyWidth(t, baseWidth) {
+  // Head is wider, tapers to thin tail
+  if (t < 0.06) return baseWidth * (0.7 + t / 0.06 * 0.3); // head taper up
+  if (t > 0.85) return baseWidth * (1.0 - (t - 0.85) / 0.15 * 0.85); // tail taper
+  return baseWidth;
+}
+
+// Get perpendicular offset at a spine point
+function perp(p0, p1) {
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  return { nx: -dy / len, ny: dx / len };
+}
+
+// Get ripple color for a given position along the body
+function getRippleColor(t, time) {
+  const totalSegments = 200;
+  const i = t * totalSegments;
+  const rippleElapsed = (time - rippleStartTime) / 1000;
+  const rippleSpeed = 120;
+
+  let sr, sg, sb;
+  if (rippleActive) {
+    const ripplePos = rippleElapsed * rippleSpeed;
+    if (i <= ripplePos) {
+      sr = rippleColor[0]; sg = rippleColor[1]; sb = rippleColor[2];
+    } else if (i <= ripplePos + 15) {
+      const blend = (i - ripplePos) / 15;
+      sr = Math.round(rippleColor[0] * (1 - blend) + prevColor[0] * blend);
+      sg = Math.round(rippleColor[1] * (1 - blend) + prevColor[1] * blend);
+      sb = Math.round(rippleColor[2] * (1 - blend) + prevColor[2] * blend);
+    } else {
+      sr = prevColor[0]; sg = prevColor[1]; sb = prevColor[2];
+    }
+    if (ripplePos > totalSegments + 15) rippleActive = false;
+  } else {
+    sr = rippleColor[0]; sg = rippleColor[1]; sb = rippleColor[2];
+  }
+  return [sr, sg, sb];
+}
+
 function drawSnake(time) {
   const w = snakeCanvas.width;
   const h = snakeCanvas.height;
   sctx.clearRect(0, 0, w, h);
 
+  const cx = w / 2;
+  const cy = h / 2;
+
   // Background glow
-  const grd = sctx.createRadialGradient(w/2, h/2, 10, w/2, h/2, w*0.45);
+  const grd = sctx.createRadialGradient(cx, cy, 10, cx, cy, w * 0.45);
   grd.addColorStop(0, `rgba(${currentR}, ${currentG}, ${currentB}, 0.06)`);
   grd.addColorStop(1, 'rgba(0,0,0,0)');
   sctx.fillStyle = grd;
   sctx.fillRect(0, 0, w, h);
 
-  const cx = w / 2;
-  const cy = h / 2;
-
   // Breathing
-  const breathPhase = Math.sin(time * 0.001) * 0.03;
+  const breathPhase = Math.sin(time * 0.001) * 0.025;
 
-  const totalScales = snakeScales.length;
-  const rippleElapsed = (time - rippleStartTime) / 1000;
-  const rippleSpeed = 80; // scales per second
+  const numPoints = 300;
+  const spine = getSpinePoints(cx, cy, breathPhase, numPoints);
+  const baseWidth = Math.min(w, h) * 0.048;
 
-  for (let i = 0; i < totalScales; i++) {
-    const s = snakeScales[i];
-    const angle = i * 0.28;
-    const baseRadius = 12 + i * 2.8;
-    const radius = baseRadius * (1 + breathPhase);
-
-    const x = cx + Math.cos(angle) * radius;
-    const y = cy + Math.sin(angle) * radius;
-
-    // Determine color based on ripple
-    let sr, sg, sb;
-    if (rippleActive) {
-      const ripplePos = rippleElapsed * rippleSpeed;
-      if (i <= ripplePos) {
-        sr = rippleColor[0]; sg = rippleColor[1]; sb = rippleColor[2];
-      } else if (i <= ripplePos + 10) {
-        const t = (i - ripplePos) / 10;
-        sr = Math.round(rippleColor[0] * (1-t) + prevColor[0] * t);
-        sg = Math.round(rippleColor[1] * (1-t) + prevColor[1] * t);
-        sb = Math.round(rippleColor[2] * (1-t) + prevColor[2] * t);
-      } else {
-        sr = prevColor[0]; sg = prevColor[1]; sb = prevColor[2];
-      }
-      if (ripplePos > totalScales + 10) rippleActive = false;
-    } else {
-      sr = rippleColor[0]; sg = rippleColor[1]; sb = rippleColor[2];
-    }
-
-    // Draw scale
-    const scaleSize = 8 + i * 0.15;
-    const scaleAngle = angle + Math.PI / 2;
-
-    sctx.save();
-    sctx.translate(x, y);
-    sctx.rotate(scaleAngle);
-
-    // Shadow/glow
-    sctx.shadowColor = `rgba(${sr}, ${sg}, ${sb}, 0.4)`;
-    sctx.shadowBlur = 6;
-
-    // Scale shape - rounded diamond
-    sctx.beginPath();
-    sctx.moveTo(0, -scaleSize);
-    sctx.quadraticCurveTo(scaleSize * 0.7, -scaleSize * 0.3, scaleSize * 0.5, scaleSize * 0.3);
-    sctx.quadraticCurveTo(0, scaleSize * 0.8, -scaleSize * 0.5, scaleSize * 0.3);
-    sctx.quadraticCurveTo(-scaleSize * 0.7, -scaleSize * 0.3, 0, -scaleSize);
-    sctx.closePath();
-
-    // 3D shading
-    const grad = sctx.createLinearGradient(0, -scaleSize, 0, scaleSize);
-    const lightR = Math.min(255, sr + 40);
-    const lightG = Math.min(255, sg + 40);
-    const lightB = Math.min(255, sb + 40);
-    const darkR = Math.max(0, sr - 50);
-    const darkG = Math.max(0, sg - 50);
-    const darkB = Math.max(0, sb - 50);
-    grad.addColorStop(0, `rgb(${lightR},${lightG},${lightB})`);
-    grad.addColorStop(0.5, `rgb(${sr},${sg},${sb})`);
-    grad.addColorStop(1, `rgb(${darkR},${darkG},${darkB})`);
-    sctx.fillStyle = grad;
-    sctx.fill();
-
-    sctx.shadowBlur = 0;
-    sctx.strokeStyle = `rgba(0,0,0,0.3)`;
-    sctx.lineWidth = 0.5;
-    sctx.stroke();
-
-    sctx.restore();
-  }
-
-  // Draw head (scale 0 is center)
-  const headAngle = 0;
-  const headRadius = 12 * (1 + breathPhase);
-  const hx = cx + Math.cos(0) * headRadius;
-  const hy = cy + Math.sin(0) * headRadius;
+  // ---- Draw shadow first ----
   sctx.save();
-  sctx.translate(hx, hy);
-
-  // Eye
+  sctx.shadowColor = 'rgba(0,0,0,0.5)';
+  sctx.shadowBlur = 12;
+  sctx.shadowOffsetX = 3;
+  sctx.shadowOffsetY = 3;
   sctx.beginPath();
-  sctx.arc(3, -3, 3, 0, Math.PI * 2);
-  sctx.fillStyle = '#ffee44';
-  sctx.fill();
-  sctx.beginPath();
-  sctx.arc(3, -3, 1.5, 0, Math.PI * 2);
+  // Build body outline
+  const leftEdge = [];
+  const rightEdge = [];
+  for (let i = 0; i < numPoints; i++) {
+    const p = spine[i];
+    const next = spine[Math.min(i + 1, numPoints - 1)];
+    const prev = spine[Math.max(i - 1, 0)];
+    const n = perp(prev, next);
+    const bw = bodyWidth(p.t, baseWidth);
+    leftEdge.push({ x: p.x + n.nx * bw, y: p.y + n.ny * bw });
+    rightEdge.push({ x: p.x - n.nx * bw, y: p.y - n.ny * bw });
+  }
+  sctx.moveTo(leftEdge[0].x, leftEdge[0].y);
+  for (let i = 1; i < numPoints; i++) sctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+  // Rounded tail cap
+  const tailP = spine[numPoints - 1];
+  const tailNext = spine[numPoints - 2];
+  const tailN = perp(tailNext, tailP);
+  const tailW = bodyWidth(1, baseWidth);
+  sctx.arc(tailP.x, tailP.y, tailW, Math.atan2(tailN.ny, tailN.nx), Math.atan2(-tailN.ny, -tailN.nx));
+  for (let i = numPoints - 1; i >= 0; i--) sctx.lineTo(rightEdge[i].x, rightEdge[i].y);
+  sctx.closePath();
   sctx.fillStyle = '#111';
   sctx.fill();
+  sctx.restore();
+
+  // ---- Draw body segments with color ----
+  const segStep = 2;
+  for (let i = 0; i < numPoints - segStep; i += segStep) {
+    const i2 = Math.min(i + segStep, numPoints - 1);
+    const p0 = spine[i];
+    const p1 = spine[i2];
+    const prev0 = spine[Math.max(i - 1, 0)];
+    const next1 = spine[Math.min(i2 + 1, numPoints - 1)];
+    const n0 = perp(prev0, spine[Math.min(i + 1, numPoints - 1)]);
+    const n1 = perp(spine[Math.max(i2 - 1, 0)], next1);
+    const bw0 = bodyWidth(p0.t, baseWidth);
+    const bw1 = bodyWidth(p1.t, baseWidth);
+
+    const [sr, sg, sb] = getRippleColor(p0.t, time);
+
+    // Determine belly vs dorsal: use perpendicular to create 3D roundedness
+    const lightR = Math.min(255, sr + 30);
+    const lightG = Math.min(255, sg + 30);
+    const lightB = Math.min(255, sb + 30);
+    const darkR = Math.max(0, Math.round(sr * 0.45));
+    const darkG = Math.max(0, Math.round(sg * 0.45));
+    const darkB = Math.max(0, Math.round(sb * 0.45));
+
+    // Draw filled quad for this segment
+    sctx.beginPath();
+    sctx.moveTo(p0.x + n0.nx * bw0, p0.y + n0.ny * bw0);
+    sctx.lineTo(p1.x + n1.nx * bw1, p1.y + n1.ny * bw1);
+    sctx.lineTo(p1.x - n1.nx * bw1, p1.y - n1.ny * bw1);
+    sctx.lineTo(p0.x - n0.nx * bw0, p0.y - n0.ny * bw0);
+    sctx.closePath();
+
+    // Gradient across body width for 3D roundedness
+    const gradX = p0.x;
+    const gradY = p0.y;
+    const bodyGrad = sctx.createLinearGradient(
+      gradX + n0.nx * bw0, gradY + n0.ny * bw0,
+      gradX - n0.nx * bw0, gradY - n0.ny * bw0
+    );
+    bodyGrad.addColorStop(0, `rgb(${darkR},${darkG},${darkB})`);
+    bodyGrad.addColorStop(0.25, `rgb(${sr},${sg},${sb})`);
+    bodyGrad.addColorStop(0.45, `rgb(${lightR},${lightG},${lightB})`);
+    bodyGrad.addColorStop(0.55, `rgb(${lightR},${lightG},${lightB})`);
+    bodyGrad.addColorStop(0.75, `rgb(${sr},${sg},${sb})`);
+    bodyGrad.addColorStop(1, `rgb(${darkR},${darkG},${darkB})`);
+    sctx.fillStyle = bodyGrad;
+    sctx.fill();
+  }
+
+  // ---- Draw scale pattern on top ----
+  const scaleSpacing = 8;
+  for (let i = 0; i < numPoints - 1; i += scaleSpacing) {
+    const p = spine[i];
+    const next = spine[Math.min(i + 1, numPoints - 1)];
+    const prev = spine[Math.max(i - 1, 0)];
+    const n = perp(prev, next);
+    const bw = bodyWidth(p.t, baseWidth);
+    const [sr, sg, sb] = getRippleColor(p.t, time);
+
+    // Direction along spine
+    const dx = next.x - prev.x;
+    const dy = next.y - prev.y;
+    const ang = Math.atan2(dy, dx);
+
+    // Draw 2 rows of overlapping scales across the body
+    const scaleRows = 3;
+    const scaleLen = scaleSpacing * 0.9;
+    for (let row = -1; row <= 1; row++) {
+      const offset = (row / scaleRows) * bw * 1.6;
+      const sx = p.x + n.nx * offset;
+      const sy = p.y + n.ny * offset;
+
+      // Alternating offset for natural pattern
+      const stagger = (row & 1) ? scaleSpacing * 0.4 : 0;
+      const sp = spine[Math.min(i + Math.round(stagger), numPoints - 1)];
+      const finalX = (sx + sp.x) / 2;
+      const finalY = (sy + sp.y) / 2;
+
+      const shade = 1.0 - Math.abs(row) * 0.15;
+      const edgeDarken = Math.abs(offset / bw);
+
+      const scR = Math.round(sr * shade * (1 - edgeDarken * 0.3));
+      const scG = Math.round(sg * shade * (1 - edgeDarken * 0.3));
+      const scB = Math.round(sb * shade * (1 - edgeDarken * 0.3));
+      const hlR = Math.min(255, scR + 35);
+      const hlG = Math.min(255, scG + 35);
+      const hlB = Math.min(255, scB + 35);
+
+      const sw = bw * 0.55;
+      const sh = scaleLen * 0.7;
+
+      sctx.save();
+      sctx.translate(finalX, finalY);
+      sctx.rotate(ang);
+
+      // Scale shape: U-shaped / rounded bottom
+      sctx.beginPath();
+      sctx.moveTo(-sw * 0.5, -sh * 0.3);
+      sctx.quadraticCurveTo(-sw * 0.55, sh * 0.2, -sw * 0.15, sh * 0.45);
+      sctx.quadraticCurveTo(0, sh * 0.55, sw * 0.15, sh * 0.45);
+      sctx.quadraticCurveTo(sw * 0.55, sh * 0.2, sw * 0.5, -sh * 0.3);
+      sctx.quadraticCurveTo(0, -sh * 0.1, -sw * 0.5, -sh * 0.3);
+      sctx.closePath();
+
+      const scGrad = sctx.createLinearGradient(0, -sh * 0.3, 0, sh * 0.5);
+      scGrad.addColorStop(0, `rgba(${hlR},${hlG},${hlB},0.5)`);
+      scGrad.addColorStop(0.6, `rgba(${scR},${scG},${scB},0.35)`);
+      scGrad.addColorStop(1, `rgba(${scR * 0.6 | 0},${scG * 0.6 | 0},${scB * 0.6 | 0},0.3)`);
+      sctx.fillStyle = scGrad;
+      sctx.fill();
+
+      sctx.strokeStyle = `rgba(0,0,0,0.15)`;
+      sctx.lineWidth = 0.5;
+      sctx.stroke();
+
+      sctx.restore();
+    }
+
+    // Dorsal stripe (center line pattern)
+    if (i % (scaleSpacing * 2) === 0) {
+      const [dr, dg, db] = getRippleColor(p.t, time);
+      const stripeR = Math.min(255, dr + 60);
+      const stripeG = Math.min(255, dg + 60);
+      const stripeB = Math.min(255, db + 60);
+      sctx.save();
+      sctx.translate(p.x, p.y);
+      sctx.rotate(ang);
+      sctx.beginPath();
+      sctx.ellipse(0, 0, bw * 0.12, scaleSpacing * 0.35, 0, 0, Math.PI * 2);
+      sctx.fillStyle = `rgba(${stripeR},${stripeG},${stripeB},0.25)`;
+      sctx.fill();
+      sctx.restore();
+    }
+  }
+
+  // ---- Draw subtle body edge glow ----
+  sctx.save();
+  sctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < numPoints; i += 4) {
+    const p = spine[i];
+    const [sr, sg, sb] = getRippleColor(p.t, time);
+    const bw = bodyWidth(p.t, baseWidth);
+    const glowGrad = sctx.createRadialGradient(p.x, p.y, bw * 0.3, p.x, p.y, bw * 1.2);
+    glowGrad.addColorStop(0, `rgba(${sr},${sg},${sb},0.03)`);
+    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    sctx.fillStyle = glowGrad;
+    sctx.fillRect(p.x - bw * 1.5, p.y - bw * 1.5, bw * 3, bw * 3);
+  }
+  sctx.restore();
+
+  // ---- Draw head ----
+  const headP = spine[0];
+  const headNext = spine[1];
+  const headDir = Math.atan2(headNext.y - headP.y, headNext.x - headP.x) + Math.PI; // facing inward from spiral start
+  const headW = bodyWidth(0, baseWidth) * 1.35;
+  const headLen = headW * 1.6;
+  const [hr, hg, hb] = getRippleColor(0, time);
+
+  sctx.save();
+  sctx.translate(headP.x, headP.y);
+  sctx.rotate(headDir);
+
+  // Head shape: rounded triangle (top-down viper head)
+  sctx.beginPath();
+  sctx.moveTo(headLen * 0.6, 0); // snout
+  sctx.quadraticCurveTo(headLen * 0.3, -headW * 0.85, -headLen * 0.3, -headW * 0.7);
+  sctx.quadraticCurveTo(-headLen * 0.5, -headW * 0.3, -headLen * 0.5, 0);
+  sctx.quadraticCurveTo(-headLen * 0.5, headW * 0.3, -headLen * 0.3, headW * 0.7);
+  sctx.quadraticCurveTo(headLen * 0.3, headW * 0.85, headLen * 0.6, 0);
+  sctx.closePath();
+
+  const headGrad = sctx.createLinearGradient(0, -headW, 0, headW);
+  headGrad.addColorStop(0, `rgb(${Math.max(0, hr - 40)},${Math.max(0, hg - 40)},${Math.max(0, hb - 40)})`);
+  headGrad.addColorStop(0.3, `rgb(${hr},${hg},${hb})`);
+  headGrad.addColorStop(0.5, `rgb(${Math.min(255, hr + 25)},${Math.min(255, hg + 25)},${Math.min(255, hb + 25)})`);
+  headGrad.addColorStop(0.7, `rgb(${hr},${hg},${hb})`);
+  headGrad.addColorStop(1, `rgb(${Math.max(0, hr - 40)},${Math.max(0, hg - 40)},${Math.max(0, hb - 40)})`);
+  sctx.fillStyle = headGrad;
+  sctx.fill();
+
+  sctx.strokeStyle = `rgba(0,0,0,0.3)`;
+  sctx.lineWidth = 1;
+  sctx.stroke();
+
+  // Nostrils
+  sctx.fillStyle = 'rgba(0,0,0,0.6)';
+  sctx.beginPath();
+  sctx.ellipse(headLen * 0.35, -headW * 0.18, 1.5, 1, 0, 0, Math.PI * 2);
+  sctx.fill();
+  sctx.beginPath();
+  sctx.ellipse(headLen * 0.35, headW * 0.18, 1.5, 1, 0, 0, Math.PI * 2);
+  sctx.fill();
+
+  // Eyes (slit pupils, reptilian)
+  const eyeX = headLen * 0.05;
+  const eyeOffY = headW * 0.42;
+  const eyeR = headW * 0.18;
+  for (const side of [-1, 1]) {
+    const ey = eyeOffY * side;
+    // Eyeball
+    sctx.beginPath();
+    sctx.arc(eyeX, ey, eyeR, 0, Math.PI * 2);
+    sctx.fillStyle = '#e8c820';
+    sctx.fill();
+    sctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    sctx.lineWidth = 0.8;
+    sctx.stroke();
+    // Vertical slit pupil
+    sctx.beginPath();
+    sctx.ellipse(eyeX, ey, eyeR * 0.2, eyeR * 0.85, 0, 0, Math.PI * 2);
+    sctx.fillStyle = '#111';
+    sctx.fill();
+    // Eye highlight
+    sctx.beginPath();
+    sctx.arc(eyeX + eyeR * 0.25, ey - eyeR * 0.3, eyeR * 0.2, 0, Math.PI * 2);
+    sctx.fillStyle = 'rgba(255,255,255,0.6)';
+    sctx.fill();
+  }
 
   // Tongue flicker
-  if (Math.sin(time * 0.003) > 0.7) {
+  if (Math.sin(time * 0.003) > 0.6) {
+    const tongueLen = headLen * 0.55;
+    const forkLen = tongueLen * 0.3;
+    const tongueWiggle = Math.sin(time * 0.015) * 2;
     sctx.beginPath();
-    sctx.moveTo(8, 0);
-    sctx.lineTo(16, -3);
-    sctx.moveTo(8, 0);
-    sctx.lineTo(16, 3);
-    sctx.strokeStyle = '#ff4444';
-    sctx.lineWidth = 1.2;
+    sctx.moveTo(headLen * 0.55, tongueWiggle * 0.3);
+    sctx.quadraticCurveTo(headLen * 0.6 + tongueLen * 0.5, tongueWiggle, headLen * 0.6 + tongueLen, tongueWiggle);
+    sctx.moveTo(headLen * 0.6 + tongueLen, tongueWiggle);
+    sctx.lineTo(headLen * 0.6 + tongueLen + forkLen, tongueWiggle - forkLen * 0.7);
+    sctx.moveTo(headLen * 0.6 + tongueLen, tongueWiggle);
+    sctx.lineTo(headLen * 0.6 + tongueLen + forkLen, tongueWiggle + forkLen * 0.7);
+    sctx.strokeStyle = '#cc2222';
+    sctx.lineWidth = 1.5;
+    sctx.lineCap = 'round';
     sctx.stroke();
   }
 
+  sctx.restore();
+
+  // ---- Rounded tail tip ----
+  const tailIdx = numPoints - 1;
+  const tailPt = spine[tailIdx];
+  const tailPrev = spine[tailIdx - 1];
+  const tailDir = Math.atan2(tailPt.y - tailPrev.y, tailPt.x - tailPrev.x);
+  const tailBW = bodyWidth(1, baseWidth);
+  const [tr, tg, tb] = getRippleColor(1, time);
+
+  sctx.save();
+  sctx.translate(tailPt.x, tailPt.y);
+  sctx.rotate(tailDir);
+  sctx.beginPath();
+  sctx.ellipse(tailBW * 0.5, 0, tailBW * 1.2, tailBW * 0.8, 0, 0, Math.PI * 2);
+  const tailGrad = sctx.createRadialGradient(0, 0, 0, 0, 0, tailBW * 1.2);
+  tailGrad.addColorStop(0, `rgb(${tr},${tg},${tb})`);
+  tailGrad.addColorStop(1, `rgb(${Math.max(0, tr - 60)},${Math.max(0, tg - 60)},${Math.max(0, tb - 60)})`);
+  sctx.fillStyle = tailGrad;
+  sctx.fill();
   sctx.restore();
 }
 
