@@ -45,10 +45,9 @@ body {
 
 .snake {
   position: absolute;
-  opacity: 0.12;
+  opacity: 0.55;
   user-select: none;
   animation: snake-float linear infinite;
-  filter: blur(0.5px);
 }
 
 @keyframes snake-float {
