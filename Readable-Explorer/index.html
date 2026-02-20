@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Readable Explorer</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- SVG filters for color vision simulation -->
+  <svg id="vision-filters" xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0">
+    <defs>
+      <filter id="filter-protanopia">
+        <feColorMatrix type="matrix" values="
+          0.567 0.433 0     0 0
+          0.558 0.442 0     0 0
+          0     0.242 0.758 0 0
+          0     0     0     1 0"/>
+      </filter>
+      <filter id="filter-deuteranopia">
+        <feColorMatrix type="matrix" values="
+          0.625 0.375 0   0 0
+          0.7   0.3   0   0 0
+          0     0.3   0.7 0 0
+          0     0     0   1 0"/>
+      </filter>
+      <filter id="filter-tritanopia">
+        <feColorMatrix type="matrix" values="
+          0.95  0.05  0     0 0
+          0     0.433 0.567 0 0
+          0     0.475 0.525 0 0
+          0     0     0     1 0"/>
+      </filter>
+      <filter id="filter-monochromacy">
+        <feColorMatrix type="matrix" values="
+          0.299 0.587 0.114 0 0
+          0.299 0.587 0.114 0 0
+          0.299 0.587 0.114 0 0
+          0     0     0     1 0"/>
+      </filter>
+    </defs>
+  </svg>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="accent-bar"></div>
+    <div class="header-text">
+      <h1>Readable Explorer</h1>
+      <p>Explore how color and type size affect readability — with live WCAG contrast analysis.</p>
+    </div>
+  </header>
+
+  <!-- TEXT DISPLAY AREA -->
+  <section id="display-section">
+    <div id="display-card">
+      <div id="display-text">
+        <p>Mary is a brilliant scientist who has spent her entire life in a black-and-white room. She has never seen color — not once. Yet from her room, she has studied every physical fact about color vision: the precise wavelengths of light that stimulate each cone type, the neural pathways that carry those signals, the regions of the brain that process them. She knows, in exquisite scientific detail, everything there is to know about what happens in the body and brain when someone sees red.</p>
+        <p>One day, Mary is released from her room. For the first time in her life, she steps into the world and sees a ripe red apple. The question philosopher Frank Jackson poses is this: does Mary learn something new? Most people feel intuitively that she does — that no amount of physical knowledge prepared her for the actual experience of seeing red, the vivid, irreducible quality of what red <em>looks like</em>. This felt quality is what philosophers call a <em>quale</em>. The argument suggests that qualia are real features of the world, yet they are not captured by any physical description, no matter how complete.</p>
+        <p>The Mary's Room thought experiment cuts to the heart of one of philosophy's deepest puzzles: the hard problem of consciousness. If Mary's physical knowledge was truly complete and she still learned something new upon leaving the room, then there exist facts about experience that cannot be reduced to physical facts. Critics disagree. Some argue that Mary gains no new propositional knowledge — only a new ability to recognize and imagine red. Others suggest her physical knowledge was never truly complete. The debate remains unresolved, but its power endures: it forces us to ask what knowledge really is, and whether the universe of subjective experience can ever be fully mapped by science.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTROL PANELS -->
+  <section id="controls-section">
+
+    <!-- BG COLOR -->
+    <div class="control-card" id="card-bg">
+      <h2>Background Color</h2>
+      <div class="color-preview-row">
+        <div class="color-swatch" id="bg-swatch"></div>
+        <span class="hex-label" id="bg-hex">#ffffff</span>
+      </div>
+      <div class="channel-row">
+        <label>R</label>
+        <input type="range" class="slider red-slider" id="bg-r" min="0" max="255" value="255" />
+        <input type="number" class="num-input" id="bg-r-num" min="0" max="255" value="255" />
+      </div>
+      <div class="channel-row">
+        <label>G</label>
+        <input type="range" class="slider green-slider" id="bg-g" min="0" max="255" value="255" />
+        <input type="number" class="num-input" id="bg-g-num" min="0" max="255" value="255" />
+      </div>
+      <div class="channel-row">
+        <label>B</label>
+        <input type="range" class="slider blue-slider" id="bg-b" min="0" max="255" value="255" />
+        <input type="number" class="num-input" id="bg-b-num" min="0" max="255" value="255" />
+      </div>
+    </div>
+
+    <!-- TEXT SIZE + VISION TYPE -->
+    <div class="control-card" id="card-mid">
+      <h2>Text Size</h2>
+      <div class="channel-row">
+        <label>Size</label>
+        <input type="range" class="slider" id="font-size" min="10" max="72" value="16" />
+        <span class="size-label" id="font-size-label">16px</span>
+      </div>
+
+      <hr class="divider" />
+
+      <h2>Vision Type</h2>
+      <div class="vision-options">
+        <label class="radio-label">
+          <input type="radio" name="vision" value="normal" checked /> Normal
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="vision" value="protanopia" /> Protanopia
+          <span class="vision-info" title="No red cones — reds appear darker and shift toward yellow/brown">ⓘ</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="vision" value="deuteranopia" /> Deuteranopia
+          <span class="vision-info" title="No green cones — most common form of color blindness">ⓘ</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="vision" value="tritanopia" /> Tritanopia
+          <span class="vision-info" title="No blue cones — blues appear green, yellows appear pink">ⓘ</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="vision" value="monochromacy" /> Monochromacy
+          <span class="vision-info" title="Complete color blindness — all colors appear as shades of gray">ⓘ</span>
+        </label>
+      </div>
+      <p id="vision-note" class="vision-note hidden">Color sliders disabled during simulation.</p>
+    </div>
+
+    <!-- TEXT COLOR -->
+    <div class="control-card" id="card-text">
+      <h2>Text Color</h2>
+      <div class="color-preview-row">
+        <div class="color-swatch" id="text-swatch"></div>
+        <span class="hex-label" id="text-hex">#141414</span>
+      </div>
+      <div class="channel-row">
+        <label>R</label>
+        <input type="range" class="slider red-slider" id="text-r" min="0" max="255" value="20" />
+        <input type="number" class="num-input" id="text-r-num" min="0" max="255" value="20" />
+      </div>
+      <div class="channel-row">
+        <label>G</label>
+        <input type="range" class="slider green-slider" id="text-g" min="0" max="255" value="20" />
+        <input type="number" class="num-input" id="text-g-num" min="0" max="255" value="20" />
+      </div>
+      <div class="channel-row">
+        <label>B</label>
+        <input type="range" class="slider blue-slider" id="text-b" min="0" max="255" value="20" />
+        <input type="number" class="num-input" id="text-b-num" min="0" max="255" value="20" />
+      </div>
+    </div>
+
+  </section>
+
+  <!-- READOUT ROW -->
+  <section id="readouts-section">
+    <div class="readout-card" id="lum-bg-card">
+      <div class="readout-label">Luminosity (Background)</div>
+      <div class="readout-value" id="lum-bg">0.000</div>
+    </div>
+    <div class="readout-card" id="contrast-card">
+      <div class="readout-label">Contrast Ratio</div>
+      <div class="readout-value contrast-ratio" id="contrast-ratio">21.00:1</div>
+      <div id="gauge-wrap">
+        <div id="gauge-bar-bg">
+          <div id="gauge-bar-fill"></div>
+          <div class="gauge-tick" style="left:calc(3/21*100%)" title="3:1"><span>3:1</span></div>
+          <div class="gauge-tick" style="left:calc(4.5/21*100%)" title="4.5:1"><span>4.5:1</span></div>
+          <div class="gauge-tick" style="left:calc(7/21*100%)" title="7:1"><span>7:1</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="readout-card" id="lum-text-card">
+      <div class="readout-label">Luminosity (Text)</div>
+      <div class="readout-value" id="lum-text">0.000</div>
+    </div>
+  </section>
+
+  <!-- WCAG BADGES -->
+  <section id="wcag-section">
+    <h3 class="section-label">WCAG Compliance</h3>
+    <div id="wcag-badges">
+      <div class="wcag-badge" id="badge-aa-normal">
+        <span class="badge-icon">✓</span>
+        <span class="badge-text">AA Normal</span>
+        <span class="badge-req">≥ 4.5:1</span>
+      </div>
+      <div class="wcag-badge" id="badge-aaa-normal">
+        <span class="badge-icon">✓</span>
+        <span class="badge-text">AAA Normal</span>
+        <span class="badge-req">≥ 7:1</span>
+      </div>
+      <div class="wcag-badge" id="badge-aa-large">
+        <span class="badge-icon">✓</span>
+        <span class="badge-text">AA Large</span>
+        <span class="badge-req">≥ 3:1</span>
+      </div>
+      <div class="wcag-badge" id="badge-aaa-large">
+        <span class="badge-icon">✓</span>
+        <span class="badge-text">AAA Large</span>
+        <span class="badge-req">≥ 4.5:1</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRESETS -->
+  <section id="presets-section">
+    <h3 class="section-label">Presets</h3>
+    <div id="presets-row">
+      <button class="preset-btn" data-preset="high-contrast">High Contrast</button>
+      <button class="preset-btn" data-preset="low-contrast">Low Contrast</button>
+      <button class="preset-btn" data-preset="dark-mode">Dark Mode</button>
+      <button class="preset-btn" data-preset="ocean">Ocean</button>
+      <button class="preset-btn" data-preset="problematic">Problematic</button>
+      <button class="preset-btn" data-preset="sunset">Sunset</button>
+    </div>
+  </section>
+
+  <!-- HISTORY + ACTIONS -->
+  <section id="bottom-section">
+    <div id="history-area">
+      <h3 class="section-label">Recent Colors</h3>
+      <div id="history-row"></div>
+    </div>
+    <div id="actions-area">
+      <button id="copy-css-btn" class="action-btn">Copy CSS</button>
+      <button id="suggest-btn" class="action-btn accent-btn">Suggest Better Contrast</button>
+    </div>
+  </section>
+
+  <div id="toast">Copied!</div>
+
+  <script src="script.js"></script>
+</body>
+</html>
