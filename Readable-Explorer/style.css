@@ -52,11 +52,10 @@ body {
 }
 
 @keyframes snake-float {
-  0%   { transform: translateY(0px)   rotate(0deg)   scale(1);   }
-  25%  { transform: translateY(-18px) rotate(8deg)   scale(1.05); }
-  50%  { transform: translateY(-6px)  rotate(-5deg)  scale(0.97); }
-  75%  { transform: translateY(-22px) rotate(6deg)   scale(1.03); }
-  100% { transform: translateY(0px)   rotate(0deg)   scale(1);   }
+  0%   { transform: rotate(0deg)    scale(1);    }
+  25%  { transform: rotate(1.5deg)  scale(1.02); }
+  60%  { transform: rotate(-1deg)   scale(0.99); }
+  100% { transform: rotate(0deg)    scale(1);    }
 }
 
 /* ensure all page content sits above background snakes */
