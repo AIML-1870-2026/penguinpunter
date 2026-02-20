@@ -34,6 +34,38 @@ body {
   padding: 0 0 60px;
 }
 
+/* ---- BACKGROUND SNAKES ---- */
+#snakes-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.snake {
+  position: absolute;
+  opacity: 0.12;
+  user-select: none;
+  animation: snake-float linear infinite;
+  filter: blur(0.5px);
+}
+
+@keyframes snake-float {
+  0%   { transform: translateY(0px)   rotate(0deg)   scale(1);   }
+  25%  { transform: translateY(-18px) rotate(8deg)   scale(1.05); }
+  50%  { transform: translateY(-6px)  rotate(-5deg)  scale(0.97); }
+  75%  { transform: translateY(-22px) rotate(6deg)   scale(1.03); }
+  100% { transform: translateY(0px)   rotate(0deg)   scale(1);   }
+}
+
+/* ensure all page content sits above background snakes */
+header, #display-section, #controls-section, #readouts-section,
+#wcag-section, #presets-section, #bottom-section {
+  position: relative;
+  z-index: 1;
+}
+
 /* ---- HEADER ---- */
 header {
   display: flex;
