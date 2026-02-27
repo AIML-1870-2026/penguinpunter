@@ -14,28 +14,22 @@
       min-height: 100vh;
       overflow: hidden;
     }
-    canvas {
-      display: block;
-      cursor: pointer;
-      image-rendering: pixelated;
-    }
+    canvas { display: block; cursor: pointer; }
   </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <script>
 // =====================================================================
-//  BAT FARM — Endless Runner
-//  Single-file HTML5 Canvas game · No build tools
+//  BAT FARM — Ground Runner
+//  Bat scurries along the ground and jumps over plant obstacles
 // =====================================================================
 
 const C = document.getElementById('c');
 const ctx = C.getContext('2d');
-
 const W = 900, H = 500;
 C.width = W; C.height = H;
 
-// Responsive scale
 function resize() {
   const s = Math.min(window.innerWidth / W, window.innerHeight / H);
   C.style.width  = (W * s) + 'px';
@@ -45,103 +39,95 @@ window.addEventListener('resize', resize);
 resize();
 
 // ─── Constants ───────────────────────────────────────────────────────
-const GROUND_Y   = H - 70;
-const GRAVITY    = 0.44;
-const FLAP_VY    = -8.8;
-const TERM_VY    = 11;
-const BAT_X      = 150;
-const SPAWN_BASE = 140; // frames between chunk spawns at 1× speed
+const GROUND_Y   = H - 80;       // top of ground surface
+const GRAVITY    = 0.65;
+const JUMP_VY    = -13.5;
+const JUMP2_VY   = -11.0;        // double-jump (second flap)
+const BAT_W      = 44;
+const BAT_H      = 24;
+const BAT_FOOT_Y = GROUND_Y;     // bat rests here (bottom of bat = GROUND_Y)
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+function lerp(a, b, t) { return a + (b - a) * clamp(t, 0, 1); }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function lerpC(a, b, t) { return Math.round(lerp(a, b, t)); }
 
 // ─── State ───────────────────────────────────────────────────────────
-let scene = 'start'; // 'start' | 'play' | 'dead'
-let score = 0, hiScore, elapsed = 0, speed = 1.0, frame = 0, startTime = 0;
-let obstacles = [], particles = [], spawnTimer = 0;
+let scene = 'start';
+let score = 0, hiScore = +localStorage.getItem('batfarm_hi') || 0;
+let elapsed = 0, speed = 1.0, frame = 0, startMs = 0;
+let obstacles = [], particles = [];
+let spawnTimer = 0;
 let shakeFrames = 0, shakeX = 0, shakeY = 0;
 let scorePopScale = 1, scorePopFrames = 0;
 
-hiScore = +localStorage.getItem('batfarm_hi') || 0;
-
 // ─── Bat ─────────────────────────────────────────────────────────────
 const bat = {
-  x: BAT_X, y: H / 2, vy: 0,
-  alive: true,
-  wx: 1, wy: 1,       // squash/stretch scale
+  x: 130,
+  y: BAT_FOOT_Y - BAT_H,
+  vy: 0,
+  grounded: true,
+  jumpsLeft: 2,          // bat gets a double-jump (second flap)
   wingPhase: 0,
+  legPhase: 0,
+  wx: 1, wy: 1,          // squash/stretch
   flashFrames: 0,
-  trail: [],
 };
 
-// ─── Parallax Layers ──────────────────────────────────────────────────
+// ─── World layers ─────────────────────────────────────────────────────
 let silos, cropRows, stars;
-
 function initWorld() {
-  silos = [];
-  for (let i = 0; i < 6; i++) {
-    silos.push({
-      x: i * 180 + Math.random() * 60,
-      kind: Math.random() < 0.55 ? 'silo' : 'tree',
-      h: 55 + Math.random() * 45,
-    });
-  }
-  cropRows = [];
-  for (let i = 0; i < 14; i++) cropRows.push({ x: i * 70 });
-
-  stars = [];
-  for (let i = 0; i < 90; i++) {
-    stars.push({
-      x: Math.random() * W,
-      y: Math.random() * GROUND_Y * 0.65,
-      r: Math.random() * 1.4 + 0.3,
-      tw: Math.random() * Math.PI * 2,
-    });
-  }
+  silos = Array.from({length: 6}, (_, i) => ({
+    x: i * 185 + Math.random() * 60,
+    kind: Math.random() < 0.55 ? 'silo' : 'tree',
+    h: 55 + Math.random() * 45,
+  }));
+  cropRows = Array.from({length: 14}, (_, i) => ({ x: i * 70 }));
+  stars = Array.from({length: 90}, () => ({
+    x: Math.random() * W, y: Math.random() * GROUND_Y * 0.6,
+    r: Math.random() * 1.4 + 0.3, tw: Math.random() * Math.PI * 2,
+  }));
 }
 initWorld();
 
-// ─── Input ────────────────────────────────────────────────────────────
+// ─── Input ───────────────────────────────────────────────────────────
 function onInput() {
-  if (scene === 'start') startGame();
-  else if (scene === 'play') doFlap();
-  else if (scene === 'dead') startGame();
+  if (scene === 'start') { startGame(); return; }
+  if (scene === 'dead')  { startGame(); return; }
+  doJump();
 }
-document.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); onInput(); } });
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); onInput(); }
+});
 C.addEventListener('click', onInput);
 C.addEventListener('touchstart', e => { e.preventDefault(); onInput(); }, { passive: false });
 
-// ─── Game lifecycle ───────────────────────────────────────────────────
+// ─── Lifecycle ───────────────────────────────────────────────────────
 function startGame() {
-  scene      = 'play';
-  score      = 0;
-  elapsed    = 0;
-  speed      = 1.0;
-  frame      = 0;
+  scene = 'play';
+  score = 0; elapsed = 0; speed = 1.0; frame = 0; startMs = performance.now();
+  obstacles = []; particles = [];
   spawnTimer = 0;
-  obstacles  = [];
-  particles  = [];
   shakeFrames = shakeX = shakeY = 0;
   scorePopScale = 1; scorePopFrames = 0;
-  startTime  = performance.now();
-  bat.y      = H / 2;
-  bat.vy     = 0;
-  bat.alive  = true;
-  bat.wx = bat.wy = 1;
-  bat.flashFrames = 0;
-  bat.trail  = [];
+  bat.y = BAT_FOOT_Y - BAT_H;
+  bat.vy = 0; bat.grounded = true; bat.jumpsLeft = 2;
+  bat.wx = bat.wy = 1; bat.flashFrames = 0;
+  bat.legPhase = 0; bat.wingPhase = 0;
 }
 
-function doFlap() {
-  if (!bat.alive) return;
-  bat.vy  = FLAP_VY;
-  bat.wx  = 0.78;
-  bat.wy  = 1.32;
-  bat.trail.push({ x: bat.x, y: bat.y, a: 0.45 });
+function doJump() {
+  if (bat.jumpsLeft <= 0) return;
+  bat.vy = bat.jumpsLeft === 2 ? JUMP_VY : JUMP2_VY;
+  bat.grounded = false;
+  bat.jumpsLeft--;
+  bat.wx = 0.75; bat.wy = 1.35;  // squash on takeoff
 }
 
 function killBat() {
-  bat.alive      = false;
-  bat.flashFrames = 12;
-  scene           = 'dead';
-  shakeFrames     = 22;
+  bat.flashFrames = 14;
+  scene = 'dead';
+  shakeFrames = 24;
   spawnDeathParticles();
   if (score > hiScore) {
     hiScore = score;
@@ -149,215 +135,155 @@ function killBat() {
   }
 }
 
-// ─── Chunks ──────────────────────────────────────────────────────────
-// Each chunk: array of { kind, dx, yAir? }
-// dx = x offset from chunk origin
-// yAir = y position for mid-air obstacles (optional)
-const CHUNKS = [
-  // 0 Single fence
-  [{ k:'fence', dx:0 }],
-  // 1 Fence gap run
-  [{ k:'fence', dx:0 }, { k:'fence', dx:115 }, { k:'fence', dx:230 }],
-  // 2 Low-and-High
-  [{ k:'hay', dx:0 }, { k:'spray', dx:40, yAir: GROUND_Y - 155 }],
-  // 3 Scarecrow Alley
-  [{ k:'scarecrow', dx:0 }, { k:'scarecrow', dx:155 }],
-  // 4 Power Line
-  [{ k:'powerline', dx:0 }],
-  // 5 Owl Ambush
-  [{ k:'owl', dx:0 }, { k:'fence', dx:210 }],
-  // 6 Night Firefly Zone
-  [{ k:'fireflies', dx:0, yAir: GROUND_Y - 230 }],
-  // 7 Tight Squeeze
-  [{ k:'hay', dx:0 }, { k:'powerline_low', dx:0 }],
-  // 8 Triple Fence Sprint
-  [{ k:'fence', dx:0 }, { k:'fence', dx:82 }, { k:'fence', dx:164 }],
-  // 9 Farm Gauntlet (late game)
-  [{ k:'scarecrow', dx:0 }, { k:'owl', dx:130 }, { k:'fence', dx:310 }],
+// ─── Speed ───────────────────────────────────────────────────────────
+// Smooth continuous ramp: starts at 1×, climbs to 3× by ~3 minutes
+function calcSpeed(t) {
+  return clamp(1.0 + t / 55, 1.0, 3.0);
+}
+
+// ─── Plants / Obstacles ──────────────────────────────────────────────
+// Types: mushroom, sunflower, cactus, bush, tallgrass
+// Spawned as single plants or small groups
+
+const PLANT_DEFS = {
+  mushroom:  { w: 28, h: 38 },
+  sunflower: { w: 22, h: 72 },
+  cactus:    { w: 26, h: 58 },
+  bush:      { w: 58, h: 32 },
+  tallgrass: { w: 18, h: 62 },
+};
+
+// Patterns: arrays of {type, dx} relative offsets
+const PATTERNS = [
+  // easy — single short
+  [{ t:'mushroom', dx:0 }],
+  [{ t:'bush',     dx:0 }],
+  // medium — single tall
+  [{ t:'cactus',   dx:0 }],
+  [{ t:'tallgrass',dx:0 }],
+  [{ t:'sunflower',dx:0 }],
+  // medium — pairs
+  [{ t:'mushroom', dx:0 }, { t:'mushroom', dx:38 }],
+  [{ t:'cactus',   dx:0 }, { t:'bush',     dx:44 }],
+  // harder — mixed height cluster
+  [{ t:'mushroom', dx:0 }, { t:'sunflower',dx:44 }],
+  [{ t:'bush',     dx:0 }, { t:'tallgrass',dx:70 }],
+  // hardest — triple
+  [{ t:'mushroom', dx:0 }, { t:'cactus',   dx:50 }, { t:'mushroom', dx:95 }],
 ];
 
-function availableChunks() {
-  const t = elapsed;
-  let idxs = t < 30 ? [0,1]
-           : t < 60 ? [0,1,2,3,4,5]
-           : [0,1,2,3,4,5,7,8,9];
-  if (elapsed >= 60) idxs.push(6); // night only
-  return idxs;
+function availablePatterns() {
+  if (elapsed < 20) return [0, 1];
+  if (elapsed < 45) return [0, 1, 2, 3, 4];
+  if (elapsed < 80) return [0, 1, 2, 3, 4, 5, 6];
+  return PATTERNS.map((_, i) => i);
 }
 
-function spawnChunk() {
-  const pool = availableChunks();
+function spawnObstacles() {
+  const pool = availablePatterns();
   const idx  = pool[Math.floor(Math.random() * pool.length)];
-  const base = W + 60;
-  for (const d of CHUNKS[idx]) {
-    const o = makeObs(d.k, base + d.dx, d.yAir);
-    if (o) obstacles.push(o);
-  }
-}
-
-function makeObs(kind, x, yAir) {
-  switch (kind) {
-    case 'fence':
-      return { k:'fence', x, y: GROUND_Y - 58, w:18, h:58, active:true };
-    case 'hay':
-      return { k:'hay', x, y: GROUND_Y - 40, w:54, h:40, active:true };
-    case 'scarecrow':
-      return { k:'scarecrow', x, y: GROUND_Y - 90, w:22, h:90, active:true };
-    case 'spray': {
-      const ey = yAir || GROUND_Y - 155;
-      return { k:'spray', x, y: ey, w:80, h:40, active:true, life:1, pts: mkSprayPts() };
-    }
-    case 'powerline': {
-      const ph = 78 + Math.random() * 40;
-      return { k:'powerline', x, w:270, poleH: ph, active:true };
-    }
-    case 'powerline_low': {
-      const ph = 100 + Math.random() * 20;
-      return { k:'powerline', x, w:270, poleH: ph, active:true };
-    }
-    case 'owl':
-      return { k:'owl', x, y: H * 0.32, w:42, h:34, vy:0, phase: Math.random()*Math.PI*2, active:true };
-    case 'fireflies': {
-      const fy = yAir || GROUND_Y - 230;
-      return { k:'fireflies', x, y: fy, w:130, h:85, ffs: mkFireflies(), active:true };
-    }
-    default: return null;
-  }
-}
-
-function mkSprayPts() {
-  return Array.from({length:18}, () => ({
-    ox: Math.random()*76, oy: Math.random()*28-14,
-    r: Math.random()*9+4, ph: Math.random()*Math.PI*2,
-  }));
-}
-function mkFireflies() {
-  return Array.from({length:8}, () => ({
-    ox: Math.random()*100, oy: Math.random()*60-30,
-    ph: Math.random()*Math.PI*2, sp: 0.035+Math.random()*0.03,
-  }));
-}
-
-// ─── Hitboxes ─────────────────────────────────────────────────────────
-function hitbox(o) {
-  switch (o.k) {
-    case 'fence':     return [o.x+2, o.y,   o.w-4, o.h];
-    case 'hay':       return [o.x+5, o.y+5, o.w-10, o.h-5];
-    case 'scarecrow': return [o.x+3, o.y+8, o.w-6, o.h-8];
-    case 'spray':     return [o.x+8, o.y-12, 65, 26];
-    case 'powerline': {
-      const wireY = GROUND_Y - o.poleH + 4;
-      return [o.x, wireY-3, o.w, 7];
-    }
-    case 'owl':       return [o.x+9, o.y+7, o.w-18, o.h-14];
-    case 'fireflies': return [o.x+18, o.y-18, o.w-36, 34];
-    default:          return [o.x, o.y, o.w||20, o.h||20];
-  }
-}
-
-function overlap(ax,ay,aw,ah, bx,by,bw,bh) {
-  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
-}
-
-// ─── Particles ────────────────────────────────────────────────────────
-function spawnDeathParticles() {
-  for (let i = 0; i < 22; i++) {
-    const a = Math.random()*Math.PI*2;
-    const sp = 2 + Math.random()*4.5;
-    particles.push({
-      x: bat.x, y: bat.y,
-      vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 2.5,
-      life: 1, dec: 0.018+Math.random()*0.02,
-      r: 3+Math.random()*4, ang: Math.random()*Math.PI*2,
-      rot: (Math.random()-0.5)*0.18,
+  const pat  = PATTERNS[idx];
+  const baseX = W + 50;
+  for (const p of pat) {
+    const def = PLANT_DEFS[p.t];
+    obstacles.push({
+      type: p.t,
+      x: baseX + p.dx,
+      y: GROUND_Y - def.h,
+      w: def.w,
+      h: def.h,
     });
   }
 }
 
-// ─── Update ───────────────────────────────────────────────────────────
+// ─── Particles ───────────────────────────────────────────────────────
+function spawnDeathParticles() {
+  for (let i = 0; i < 20; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 2 + Math.random() * 5;
+    particles.push({
+      x: bat.x + BAT_W / 2, y: bat.y + BAT_H / 2,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2,
+      life: 1, dec: 0.02 + Math.random() * 0.018,
+      r: 3 + Math.random() * 4,
+      ang: Math.random() * Math.PI * 2, rot: (Math.random() - 0.5) * 0.2,
+    });
+  }
+}
+
+// ─── Night progress ──────────────────────────────────────────────────
+function night() { return clamp(elapsed / 120, 0, 1); }
+
+// ─── Update ──────────────────────────────────────────────────────────
 function update() {
   frame++;
   if (scene !== 'play') return;
 
-  elapsed = (performance.now() - startTime) / 1000;
-
-  // Speed ramp
-  if      (elapsed < 30)  speed = 1.0;
-  else if (elapsed < 60)  speed = lerp(1.0, 1.2, (elapsed-30)/30);
-  else if (elapsed < 120) speed = lerp(1.2, 1.5, (elapsed-60)/60);
-  else if (elapsed < 180) speed = lerp(1.5, 1.8, (elapsed-120)/60);
-  else                    speed = clamp(lerp(1.8, 2.5, (elapsed-180)/120), 1.8, 2.5);
+  elapsed = (performance.now() - startMs) / 1000;
+  speed   = calcSpeed(elapsed);
 
   // Bat physics
-  bat.vy = clamp(bat.vy + GRAVITY, -30, TERM_VY);
-  bat.y += bat.vy;
-  bat.wx += (1 - bat.wx) * 0.14;
-  bat.wy += (1 - bat.wy) * 0.14;
-  if (bat.vy > 5) { bat.wx = lerp(bat.wx, 0.72, 0.08); bat.wy = lerp(bat.wy, 1.38, 0.08); }
+  if (!bat.grounded) {
+    bat.vy = clamp(bat.vy + GRAVITY, -30, 18);
+    bat.y += bat.vy;
+    if (bat.y >= BAT_FOOT_Y - BAT_H) {
+      bat.y = BAT_FOOT_Y - BAT_H;
+      bat.vy = 0;
+      bat.grounded = true;
+      bat.jumpsLeft = 2;
+      bat.wy = 0.6; bat.wx = 1.4;  // squash on landing
+    }
+  }
+
+  // Squash/stretch recovery
+  bat.wx += (1 - bat.wx) * 0.15;
+  bat.wy += (1 - bat.wy) * 0.15;
   if (bat.flashFrames > 0) bat.flashFrames--;
 
+  // Leg animation (only on ground)
+  if (bat.grounded) bat.legPhase += 0.25 * speed;
+  bat.wingPhase += bat.grounded ? 0.06 : 0.28;
+
   // Score
-  score += speed * 0.12;
+  score += speed * 0.14;
   const si = Math.floor(score);
-  if (si > 0 && si % 500 === 0 && Math.abs(score - si) < 0.15) {
-    scorePopScale = 1.55; scorePopFrames = 22;
+  if (si > 0 && si % 300 === 0 && Math.abs(score - si) < 0.16) {
+    scorePopScale = 1.5; scorePopFrames = 22;
   }
   if (scorePopFrames > 0) { scorePopFrames--; scorePopScale = lerp(scorePopScale, 1, 0.12); }
   else scorePopScale = 1;
 
   // Move obstacles
-  for (const o of obstacles) {
-    if (o.k === 'owl') {
-      o.phase += 0.038;
-      o.y += Math.sin(o.phase) * 1.6;
-      o.x -= speed * 5.5;
-    } else {
-      o.x -= speed * 4.2;
-    }
-  }
-  obstacles = obstacles.filter(o => o.x > -350);
+  const pxPerFrame = speed * 4.5;
+  for (const o of obstacles) o.x -= pxPerFrame;
+  obstacles = obstacles.filter(o => o.x + o.w > -20);
 
   // Spawn
+  const interval = Math.max(55, 160 / speed);
   spawnTimer++;
-  const interval = Math.max(65, SPAWN_BASE / speed);
-  if (spawnTimer >= interval) { spawnTimer = 0; spawnChunk(); }
+  if (spawnTimer >= interval) { spawnTimer = 0; spawnObstacles(); }
 
-  // Collision
-  const bx = bat.x - 11, by = bat.y - 9, bw = 22, bh = 18;
+  // Collision (tight box around bat body)
+  const bx = bat.x + 6, by = bat.y + 4, bw = BAT_W - 12, bh = BAT_H - 4;
   for (const o of obstacles) {
-    if (!o.active) continue;
-    const [hx,hy,hw,hh] = hitbox(o);
-    if (overlap(bx,by,bw,bh, hx,hy,hw,hh)) { killBat(); return; }
+    if (bx < o.x + o.w - 3 && bx + bw > o.x + 3 && by < o.y + o.h && by + bh > o.y) {
+      killBat(); return;
+    }
   }
-  if (bat.y + 9 >= GROUND_Y || bat.y - 9 <= 0) { killBat(); return; }
 
   // Screenshake
   if (shakeFrames > 0) {
-    shakeX = (Math.random()-0.5) * 9;
-    shakeY = (Math.random()-0.5) * 9;
+    shakeX = (Math.random() - 0.5) * 10;
+    shakeY = (Math.random() - 0.5) * 10;
     shakeFrames--;
   } else { shakeX = shakeY = 0; }
 
   // Particles
   for (const p of particles) {
-    p.x += p.vx; p.y += p.vy; p.vy += 0.14;
+    p.x += p.vx; p.y += p.vy; p.vy += 0.15;
     p.life -= p.dec; p.ang += p.rot;
   }
   particles = particles.filter(p => p.life > 0);
-
-  // Trail
-  bat.trail = bat.trail.filter(t => t.a > 0);
-  for (const t of bat.trail) { t.x -= 3; t.a -= 0.042; }
-}
-
-// ─── Night progress (0=sunset, 1=full night) ─────────────────────────
-function night() { return clamp(elapsed / 120, 0, 1); }
-
-// ─── Draw helpers ─────────────────────────────────────────────────────
-function lerp(a,b,t) { return a+(b-a)*clamp(t,0,1); }
-function clamp(v,lo,hi) { return v<lo?lo:v>hi?hi:v; }
-function lerpCol(a,b,t) { // lerp int 0–255
-  return Math.round(lerp(a,b,t));
 }
 
 // ─── Draw ─────────────────────────────────────────────────────────────
@@ -374,48 +300,35 @@ function draw() {
   drawCropRows();
   drawGround();
 
-  // Obstacles
-  for (const o of obstacles) drawObs(o);
-
-  // Trail
-  for (const t of bat.trail) {
-    ctx.save(); ctx.globalAlpha = t.a;
-    ctx.fillStyle = '#3a2a1a';
-    ctx.beginPath(); ctx.ellipse(t.x, t.y, 16, 7, 0, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
+  for (const o of obstacles) drawPlant(o);
 
   if (scene !== 'start') drawBat();
 
-  // Particles
   for (const p of particles) {
     ctx.save(); ctx.globalAlpha = p.life;
     ctx.translate(p.x, p.y); ctx.rotate(p.ang);
     ctx.fillStyle = '#4a3020';
-    ctx.beginPath(); ctx.ellipse(0,0,p.r,p.r*0.38,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, p.r, p.r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
   if (scene === 'play') drawHUD();
 
-  ctx.restore(); // end shake
+  ctx.restore();
 
   if (scene === 'start') { drawStartBat(); drawStartScreen(); }
   else if (scene === 'dead') drawDeadScreen();
 }
 
-// ─── Sky ──────────────────────────────────────────────────────────────
+// ─── Sky & world drawing ──────────────────────────────────────────────
 function drawSky() {
   const np = night();
-  const r0 = lerpCol(0x1a,0x04,np), g0 = lerpCol(0x0a,0x02,np), b0 = lerpCol(0x3e,0x10,np);
-  const r1 = lerpCol(0x55,0x0a,np), g1 = lerpCol(0x1a,0x05,np), b1 = lerpCol(0x70,0x22,np);
-  const r2 = lerpCol(0xe0,0x08,np), g2 = lerpCol(0x4a,0x05,np), b2 = lerpCol(0x18,0x18,np);
-  const g = ctx.createLinearGradient(0,0,0,GROUND_Y);
-  g.addColorStop(0,   `rgb(${r0},${g0},${b0})`);
-  g.addColorStop(0.45,`rgb(${r1},${g1},${b1})`);
-  g.addColorStop(1,   `rgb(${r2},${g2},${b2})`);
+  const g = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  g.addColorStop(0,    `rgb(${lerpC(0x1a,0x04,np)},${lerpC(0x0a,0x02,np)},${lerpC(0x3e,0x10,np)})`);
+  g.addColorStop(0.45, `rgb(${lerpC(0x55,0x0a,np)},${lerpC(0x1a,0x05,np)},${lerpC(0x70,0x22,np)})`);
+  g.addColorStop(1,    `rgb(${lerpC(0xe0,0x08,np)},${lerpC(0x4a,0x05,np)},${lerpC(0x18,0x18,np)})`);
   ctx.fillStyle = g;
-  ctx.fillRect(0,0,W,GROUND_Y);
+  ctx.fillRect(0, 0, W, GROUND_Y);
 }
 
 function drawStars() {
@@ -424,10 +337,9 @@ function drawStars() {
   const a = (np - 0.25) / 0.75;
   for (const s of stars) {
     s.tw += 0.028;
-    const tw = (Math.sin(s.tw)*0.3+0.7)*a;
-    ctx.save(); ctx.globalAlpha = tw;
+    ctx.save(); ctx.globalAlpha = (Math.sin(s.tw) * 0.3 + 0.7) * a;
     ctx.fillStyle = '#fffde8';
-    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 }
@@ -435,53 +347,41 @@ function drawStars() {
 function drawMoon() {
   const np = night();
   if (np < 0.45) return;
-  const a   = (np-0.45)/0.55;
-  const my  = H*0.1 + (1-a)*90;
-  const mx  = W*0.76;
-  ctx.save(); ctx.globalAlpha = a*0.92;
-  // Glow
-  const gl = ctx.createRadialGradient(mx,my,0,mx,my,55);
-  gl.addColorStop(0,'rgba(255,255,200,0.28)');
-  gl.addColorStop(1,'rgba(255,255,200,0)');
-  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(mx,my,55,0,Math.PI*2); ctx.fill();
-  // Disc
-  ctx.fillStyle = '#fff9d0';
-  ctx.beginPath(); ctx.arc(mx,my,21,0,Math.PI*2); ctx.fill();
-  // Moon field glow
-  ctx.globalAlpha = a*0.07;
-  const fg = ctx.createLinearGradient(mx-220,GROUND_Y,mx+220,H);
-  fg.addColorStop(0,'rgba(255,255,200,0)');
-  fg.addColorStop(0.5,'rgba(255,255,200,1)');
-  fg.addColorStop(1,'rgba(255,255,200,0)');
-  ctx.fillStyle = fg; ctx.fillRect(mx-220,GROUND_Y,440,H-GROUND_Y);
+  const a  = (np - 0.45) / 0.55;
+  const mx = W * 0.76, my = H * 0.1 + (1 - a) * 90;
+  ctx.save(); ctx.globalAlpha = a * 0.92;
+  const gl = ctx.createRadialGradient(mx, my, 0, mx, my, 55);
+  gl.addColorStop(0, 'rgba(255,255,200,0.28)');
+  gl.addColorStop(1, 'rgba(255,255,200,0)');
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(mx, my, 55, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff9d0'; ctx.beginPath(); ctx.arc(mx, my, 21, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
 function drawHorizonGlow() {
   const np = night();
   if (np > 0.85) return;
-  const a = (1-np/0.85)*0.55;
-  const g = ctx.createLinearGradient(0,GROUND_Y-90,0,GROUND_Y);
-  g.addColorStop(0,'rgba(244,160,58,0)');
-  g.addColorStop(1,`rgba(244,160,58,${a})`);
-  ctx.fillStyle = g; ctx.fillRect(0,GROUND_Y-90,W,90);
+  const a = (1 - np / 0.85) * 0.55;
+  const g = ctx.createLinearGradient(0, GROUND_Y - 90, 0, GROUND_Y);
+  g.addColorStop(0, 'rgba(244,160,58,0)');
+  g.addColorStop(1, `rgba(244,160,58,${a})`);
+  ctx.fillStyle = g; ctx.fillRect(0, GROUND_Y - 90, W, 90);
 }
 
 function drawSilos() {
   const np = night();
-  const col = `rgba(0,0,0,${0.68+np*0.28})`;
+  const col = `rgba(0,0,0,${0.68 + np * 0.28})`;
   for (const s of silos) {
     s.x -= 0.28 * speed;
-    if (s.x < -110) s.x += W + 200;
+    if (s.x < -120) s.x += W + 220;
     ctx.save(); ctx.fillStyle = col;
     if (s.kind === 'silo') {
-      const sw=30;
-      ctx.fillRect(s.x, GROUND_Y-s.h, sw, s.h);
-      ctx.beginPath(); ctx.arc(s.x+sw/2, GROUND_Y-s.h, sw/2, Math.PI, 0); ctx.fill();
-      ctx.fillRect(s.x+38, GROUND_Y-s.h*0.65, 20, s.h*0.65);
+      ctx.fillRect(s.x, GROUND_Y - s.h, 30, s.h);
+      ctx.beginPath(); ctx.arc(s.x + 15, GROUND_Y - s.h, 15, Math.PI, 0); ctx.fill();
+      ctx.fillRect(s.x + 38, GROUND_Y - s.h * 0.65, 20, s.h * 0.65);
     } else {
-      ctx.fillRect(s.x+10, GROUND_Y-s.h, 8, s.h*0.42);
-      ctx.beginPath(); ctx.arc(s.x+14, GROUND_Y-s.h*0.78, 22, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(s.x + 10, GROUND_Y - s.h, 8, s.h * 0.42);
+      ctx.beginPath(); ctx.arc(s.x + 14, GROUND_Y - s.h * 0.78, 22, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }
@@ -489,129 +389,141 @@ function drawSilos() {
 
 function drawCropRows() {
   const np = night();
-  const r1 = lerpCol(74,26,np), g1 = lerpCol(122,58,np), b1 = lerpCol(42,10,np);
-  const r2 = lerpCol(40,10,np), g2 = lerpCol(88,30,np), b2 = lerpCol(18,4,np);
+  const r2 = lerpC(40,10,np), g2 = lerpC(88,30,np), b2 = lerpC(18,4,np);
   ctx.fillStyle = `rgb(${r2},${g2},${b2})`;
-  ctx.fillRect(0, GROUND_Y-32, W, 32);
+  ctx.fillRect(0, GROUND_Y - 28, W, 28);
+  const r1 = lerpC(74,26,np), g1 = lerpC(122,58,np), b1 = lerpC(42,10,np);
   ctx.fillStyle = `rgb(${r1},${g1},${b1})`;
   for (const r of cropRows) {
     r.x -= 1.4 * speed;
     if (r.x < -75) r.x += cropRows.length * 70;
     for (let i = 0; i < 6; i++) {
-      const cx = r.x + i*13;
-      ctx.beginPath(); ctx.ellipse(cx, GROUND_Y-16+Math.sin(cx*0.3)*3, 4.5, 9, 0, 0, Math.PI*2); ctx.fill();
+      const cx = r.x + i * 13;
+      ctx.beginPath(); ctx.ellipse(cx, GROUND_Y - 14 + Math.sin(cx * 0.3) * 3, 4, 8, 0, 0, Math.PI * 2); ctx.fill();
     }
   }
 }
 
 function drawGround() {
   const np = night();
-  const r = lerpCol(107,55,np), g = lerpCol(66,32,np), b = lerpCol(38,16,np);
-  ctx.fillStyle = `rgb(${r},${g},${b})`;
-  ctx.fillRect(0, GROUND_Y, W, H-GROUND_Y);
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0,GROUND_Y); ctx.lineTo(W,GROUND_Y); ctx.stroke();
+  ctx.fillStyle = `rgb(${lerpC(107,55,np)},${lerpC(66,32,np)},${lerpC(38,16,np)})`;
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
 }
 
-// ─── Draw Obstacles ───────────────────────────────────────────────────
-function drawObs(o) {
+// ─── Draw Plants ─────────────────────────────────────────────────────
+function drawPlant(o) {
   ctx.save();
-  switch (o.k) {
-    case 'fence': {
-      ctx.fillStyle = '#8b5e2e';
-      ctx.fillRect(o.x, o.y, o.w, o.h);
-      ctx.fillStyle = '#6b4426';
-      ctx.fillRect(o.x-6, o.y+12, o.w+12, 6);
-      ctx.fillStyle = '#8b5e2e';
-      ctx.beginPath(); ctx.moveTo(o.x+o.w/2, o.y-10); ctx.lineTo(o.x, o.y); ctx.lineTo(o.x+o.w, o.y); ctx.closePath(); ctx.fill();
+  const bx = o.x, by = o.y, bw = o.w, bh = o.h;
+  switch (o.type) {
+
+    case 'mushroom': {
+      // stem
+      ctx.fillStyle = '#d4b896';
+      ctx.fillRect(bx + bw/2 - 5, by + bh*0.45, 10, bh*0.55);
+      // cap
+      ctx.fillStyle = '#c0392b';
+      ctx.beginPath(); ctx.ellipse(bx + bw/2, by + bh*0.45, bw/2, bh*0.55, 0, Math.PI, 0); ctx.fill();
+      // spots
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath(); ctx.arc(bx + bw/2 - 5, by + bh*0.25, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx + bw/2 + 5, by + bh*0.35, 3, 0, Math.PI*2); ctx.fill();
       break;
     }
-    case 'hay': {
-      ctx.fillStyle = '#c8a850';
-      ctx.beginPath(); ctx.ellipse(o.x+o.w/2, o.y+o.h/2, o.w/2, o.h/2, 0, 0, Math.PI*2); ctx.fill();
-      ctx.strokeStyle = '#a08030'; ctx.lineWidth = 2;
-      for (let i=1; i<4; i++) {
-        const hy = o.y + i*(o.h/4);
-        const dx = Math.sqrt(Math.max(0,(o.h/2)**2 - (hy-(o.y+o.h/2))**2));
-        if (dx > 0) {
-          ctx.beginPath(); ctx.moveTo(o.x+o.w/2-dx+2, hy); ctx.lineTo(o.x+o.w/2+dx-2, hy); ctx.stroke();
-        }
+
+    case 'sunflower': {
+      // stem
+      ctx.strokeStyle = '#4a7a20'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(bx + bw/2, GROUND_Y); ctx.lineTo(bx + bw/2, by + 22); ctx.stroke();
+      // leaf
+      ctx.fillStyle = '#4a7a20';
+      ctx.beginPath(); ctx.ellipse(bx + bw/2 - 10, by + bh*0.55, 14, 7, -0.5, 0, Math.PI*2); ctx.fill();
+      // petals
+      ctx.fillStyle = '#f4c020';
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.beginPath(); ctx.ellipse(bx + bw/2 + Math.cos(a)*13, by + 14 + Math.sin(a)*13, 7, 4, a, 0, Math.PI*2); ctx.fill();
       }
+      // centre
+      ctx.fillStyle = '#5a2800';
+      ctx.beginPath(); ctx.arc(bx + bw/2, by + 14, 9, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#3a1800';
+      ctx.beginPath(); ctx.arc(bx + bw/2, by + 14, 6, 0, Math.PI*2); ctx.fill();
       break;
     }
-    case 'scarecrow': {
-      ctx.fillStyle = '#7a5a30';
-      ctx.fillRect(o.x+7, o.y, 8, o.h);
-      ctx.fillRect(o.x-10, o.y+18, o.w+20, 7);
-      ctx.fillStyle = '#e8a820';
-      ctx.beginPath(); ctx.ellipse(o.x+11, o.y+12, 13, 11, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#1a1000';
-      ctx.fillRect(o.x+5,o.y+9,5,3); ctx.fillRect(o.x+14,o.y+9,5,3);
-      ctx.beginPath(); ctx.arc(o.x+11,o.y+16,4,0,Math.PI); ctx.fill();
-      ctx.fillStyle = '#111';
-      ctx.fillRect(o.x+3,o.y-5,16,4); ctx.fillRect(o.x+5,o.y-16,12,13);
-      ctx.fillStyle = '#7a4020';
-      ctx.fillRect(o.x-9,o.y+25,o.w+18, o.h-25);
-      ctx.fillStyle='#5a3018'; ctx.fillRect(o.x-9,o.y+25,12,o.h-25); ctx.fillRect(o.x+o.w+9-12,o.y+25,12,o.h-25);
-      break;
-    }
-    case 'spray': {
-      for (const p of o.pts) {
-        p.ph += 0.038;
-        const px = o.x + p.ox + Math.sin(p.ph)*4.5;
-        const py = o.y + p.oy + Math.cos(p.ph*0.75)*3;
-        ctx.globalAlpha = (0.28+Math.sin(p.ph)*0.1)*o.life;
-        ctx.fillStyle = '#b0e898';
-        ctx.beginPath(); ctx.arc(px,py,p.r,0,Math.PI*2); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case 'powerline': {
-      const wireY = GROUND_Y - o.poleH;
-      ctx.fillStyle = '#5a4020';
-      ctx.fillRect(o.x, wireY, 13, o.poleH);
-      ctx.fillRect(o.x+o.w-13, wireY, 13, o.poleH);
-      ctx.strokeStyle = '#111'; ctx.lineWidth = 3;
+
+    case 'cactus': {
+      // main trunk
+      ctx.fillStyle = '#3a8a30';
       ctx.beginPath();
-      ctx.moveTo(o.x+13, wireY+5);
-      ctx.quadraticCurveTo(o.x+o.w/2, wireY+22, o.x+o.w-13, wireY+5);
-      ctx.stroke();
-      ctx.fillStyle = '#c03015';
-      ctx.fillRect(o.x+10,wireY+1,9,8); ctx.fillRect(o.x+o.w-18,wireY+1,9,8);
+      ctx.roundRect(bx + bw/2 - 7, by + 10, 14, bh - 10, 6);
+      ctx.fill();
+      // left arm
+      ctx.beginPath();
+      ctx.roundRect(bx, by + bh*0.35, bw/2 - 4, 10, 4);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(bx, by + bh*0.18, 10, bh*0.35 - bh*0.18 + 10, 4);
+      ctx.fill();
+      // right arm
+      ctx.beginPath();
+      ctx.roundRect(bx + bw/2 + 4, by + bh*0.5, bw/2 - 4, 10, 4);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(bx + bw - 10, by + bh*0.28, 10, bh*0.5 - bh*0.28 + 10, 4);
+      ctx.fill();
+      // spines
+      ctx.strokeStyle = '#c8e890'; ctx.lineWidth = 1.5;
+      const spines = [[bx+bw/2-7,by+18],[bx+bw/2+7,by+26],[bx+bw/2-7,by+38],[bx+bw/2+7,by+50]];
+      for (const [sx,sy] of spines) {
+        ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-6,sy-4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-6,sy+4); ctx.stroke();
+      }
       break;
     }
-    case 'owl': {
-      ctx.fillStyle = '#7a5a38';
-      ctx.beginPath(); ctx.ellipse(o.x+o.w/2, o.y+o.h/2, o.w/2, o.h/2, 0, 0, Math.PI*2); ctx.fill();
-      // Wings
-      ctx.fillStyle = '#5a4028';
-      const wf = Math.sin(o.phase*2.8)*10;
-      ctx.beginPath(); ctx.moveTo(o.x,o.y+o.h/2); ctx.lineTo(o.x-28,o.y+o.h/2+wf); ctx.lineTo(o.x,o.y+o.h); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(o.x+o.w,o.y+o.h/2); ctx.lineTo(o.x+o.w+28,o.y+o.h/2+wf); ctx.lineTo(o.x+o.w,o.y+o.h); ctx.closePath(); ctx.fill();
-      // Eyes
-      ctx.fillStyle = '#ffee00';
-      ctx.beginPath(); ctx.arc(o.x+14,o.y+12,5.5,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(o.x+28,o.y+12,5.5,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#000';
-      ctx.beginPath(); ctx.arc(o.x+14,o.y+12,2.5,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(o.x+28,o.y+12,2.5,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#e8a020';
-      ctx.beginPath(); ctx.moveTo(o.x+19,o.y+17); ctx.lineTo(o.x+23,o.y+23); ctx.lineTo(o.x+18,o.y+23); ctx.closePath(); ctx.fill();
+
+    case 'bush': {
+      // several overlapping circles
+      const centers = [[0.15,0.35],[0.4,0.12],[0.65,0.22],[0.88,0.4],[0.5,0.08]];
+      ctx.fillStyle = '#2e7a1a';
+      for (const [fx,fy] of centers) {
+        const r = bh * (0.38 + fy * 0.3);
+        ctx.beginPath(); ctx.arc(bx + bw*fx, by + bh*fy + r*0.5, r, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.fillStyle = '#3a8e22';
+      for (const [fx,fy] of centers.slice(0,4)) {
+        const r = bh * 0.28;
+        ctx.beginPath(); ctx.arc(bx + bw*fx + 4, by + bh*fy + r*0.3, r, 0, Math.PI*2); ctx.fill();
+      }
+      // berries
+      ctx.fillStyle = '#cc2244';
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath(); ctx.arc(bx + 8 + i*10 + Math.sin(i)*4, by + bh*0.3 + Math.cos(i)*6, 3, 0, Math.PI*2); ctx.fill();
+      }
       break;
     }
-    case 'fireflies': {
-      for (const f of o.ffs) {
-        f.ph += f.sp;
-        const fx = o.x + f.ox + Math.sin(f.ph)*16;
-        const fy = o.y + f.oy + Math.cos(f.ph*1.35)*13;
-        const gl = ctx.createRadialGradient(fx,fy,0,fx,fy,13);
-        gl.addColorStop(0,'rgba(170,255,90,0.85)');
-        gl.addColorStop(1,'rgba(170,255,90,0)');
-        ctx.fillStyle = gl;
-        ctx.beginPath(); ctx.arc(fx,fy,13,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#deff88';
-        ctx.beginPath(); ctx.arc(fx,fy,2.5,0,Math.PI*2); ctx.fill();
+
+    case 'tallgrass': {
+      // several swaying blades
+      const blades = [
+        { ox:2,  lean:-0.2, w:4, col:'#4a8a20' },
+        { ox:7,  lean: 0.15,w:5, col:'#3a7a18' },
+        { ox:11, lean:-0.1, w:4, col:'#5a9a28' },
+        { ox:15, lean: 0.25,w:3, col:'#4a8a20' },
+      ];
+      for (const b of blades) {
+        const tx = bx + b.ox + Math.sin(frame*0.04 + b.lean*5)*3;
+        ctx.fillStyle = b.col;
+        ctx.beginPath();
+        ctx.moveTo(tx, GROUND_Y);
+        ctx.lineTo(tx - b.w/2, GROUND_Y);
+        ctx.quadraticCurveTo(tx + b.lean*20, by + bh*0.5, tx + b.lean*30, by);
+        ctx.quadraticCurveTo(tx + b.lean*20 + b.w, by + bh*0.5, tx + b.w/2, GROUND_Y);
+        ctx.closePath(); ctx.fill();
+        // seed tip
+        ctx.fillStyle = '#c8a840';
+        ctx.beginPath(); ctx.ellipse(tx + b.lean*30, by, 3, 7, b.lean*0.5, 0, Math.PI*2); ctx.fill();
       }
       break;
     }
@@ -621,52 +533,67 @@ function drawObs(o) {
 
 // ─── Draw Bat ─────────────────────────────────────────────────────────
 function drawBat() {
+  const np = night();
   ctx.save();
-  ctx.translate(bat.x, bat.y);
+  ctx.translate(bat.x + BAT_W/2, bat.y + BAT_H/2);
   ctx.scale(bat.wx, bat.wy);
 
-  bat.wingPhase += 0.22;
-  const wf  = Math.sin(bat.wingPhase)*0.5+0.5;
-  const ws  = 48;
-  const wd  = 9 + wf*13;
-  const col = bat.flashFrames > 0 ? '#fff' : '#3a2a1a';
-  ctx.fillStyle = col;
+  const col = bat.flashFrames > 0 ? '#fff' : '#2e1e0c';
 
-  // Left wing
-  ctx.beginPath();
-  ctx.moveTo(-3,-3);
-  ctx.bezierCurveTo(-ws*0.38,-wd, -ws*0.82,wd*wf, -ws/2,wd+2);
-  ctx.bezierCurveTo(-ws*0.28,wd+8, -ws*0.08, 5, -3, 3);
-  ctx.closePath(); ctx.fill();
-
-  // Right wing
-  ctx.beginPath();
-  ctx.moveTo(3,-3);
-  ctx.bezierCurveTo(ws*0.38,-wd, ws*0.82,wd*wf, ws/2,wd+2);
-  ctx.bezierCurveTo(ws*0.28,wd+8, ws*0.08, 5, 3, 3);
-  ctx.closePath(); ctx.fill();
+  if (bat.grounded) {
+    // Walking: small scurrying legs
+    const lp = bat.legPhase;
+    ctx.fillStyle = col === '#fff' ? '#fff' : '#1e1208';
+    // back legs
+    ctx.beginPath(); ctx.ellipse(-10 + Math.sin(lp)*5, BAT_H/2 - 2, 3, 5, Math.sin(lp)*0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(2  + Math.sin(lp+Math.PI)*5, BAT_H/2 - 2, 3, 5, Math.sin(lp+Math.PI)*0.4, 0, Math.PI*2); ctx.fill();
+    // wings folded against body
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(-3, -4);
+    ctx.bezierCurveTo(-20, -8, -26, 4, -18, 10);
+    ctx.bezierCurveTo(-12, 14,  -6, 6,  -3, 4);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(3, -4);
+    ctx.bezierCurveTo(20, -8, 26, 4, 18, 10);
+    ctx.bezierCurveTo(12, 14,  6, 6,  3, 4);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // Flying: wings spread
+    const wf = Math.sin(bat.wingPhase) * 0.5 + 0.5;
+    const ws = 50, wd = 10 + wf * 14;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(-3, -3);
+    ctx.bezierCurveTo(-ws*0.38, -wd, -ws*0.82, wd*wf, -ws/2, wd+2);
+    ctx.bezierCurveTo(-ws*0.28, wd+8, -ws*0.08, 5, -3, 3);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(3, -3);
+    ctx.bezierCurveTo(ws*0.38, -wd, ws*0.82, wd*wf, ws/2, wd+2);
+    ctx.bezierCurveTo(ws*0.28, wd+8, ws*0.08, 5, 3, 3);
+    ctx.closePath(); ctx.fill();
+  }
 
   // Body
-  ctx.fillStyle = bat.flashFrames > 0 ? '#fff' : '#2a1808';
-  ctx.beginPath(); ctx.ellipse(0,0,13,9,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = bat.flashFrames > 0 ? '#fff' : '#1e1208';
+  ctx.beginPath(); ctx.ellipse(0, 0, 14, 9, 0, 0, Math.PI*2); ctx.fill();
 
   // Ears
-  ctx.fillStyle = bat.flashFrames > 0 ? '#fff' : '#1e1208';
-  ctx.beginPath(); ctx.moveTo(-8,-7); ctx.lineTo(-13,-18); ctx.lineTo(-4,-9); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(8,-7);  ctx.lineTo(13,-18);  ctx.lineTo(4,-9);  ctx.fill();
+  ctx.fillStyle = bat.flashFrames > 0 ? '#fff' : '#16100a';
+  ctx.beginPath(); ctx.moveTo(-7,-7); ctx.lineTo(-12,-17); ctx.lineTo(-3,-9); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(7,-7);  ctx.lineTo(12,-17);  ctx.lineTo(3,-9);  ctx.fill();
 
   // Eyes
-  const np = night();
-  const eyeGlow = np > 0.38 ? (np-0.38)/0.62 : 0;
+  const eyeGlow = np > 0.38 ? (np - 0.38) / 0.62 : 0;
   if (eyeGlow > 0) {
-    const er1 = ctx.createRadialGradient(-5,-4,0,-5,-4,14);
-    er1.addColorStop(0,`rgba(255,70,0,${eyeGlow*0.45})`);
-    er1.addColorStop(1,'rgba(255,70,0,0)');
-    ctx.fillStyle = er1; ctx.beginPath(); ctx.arc(-5,-4,14,0,Math.PI*2); ctx.fill();
-    const er2 = ctx.createRadialGradient(5,-4,0,5,-4,14);
-    er2.addColorStop(0,`rgba(255,70,0,${eyeGlow*0.45})`);
-    er2.addColorStop(1,'rgba(255,70,0,0)');
-    ctx.fillStyle = er2; ctx.beginPath(); ctx.arc(5,-4,14,0,Math.PI*2); ctx.fill();
+    for (const ex of [-5, 5]) {
+      const eg = ctx.createRadialGradient(ex,-4,0, ex,-4,13);
+      eg.addColorStop(0, `rgba(255,70,0,${eyeGlow*0.45})`);
+      eg.addColorStop(1, 'rgba(255,70,0,0)');
+      ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(ex,-4,13,0,Math.PI*2); ctx.fill();
+    }
   }
   ctx.fillStyle = eyeGlow > 0 ? `rgba(255,100,40,${0.7+eyeGlow*0.3})` : '#ffc870';
   const er = eyeGlow > 0 ? 3.8 : 2.8;
@@ -676,83 +603,73 @@ function drawBat() {
   ctx.restore();
 }
 
-// ─── HUD ─────────────────────────────────────────────────────────────
+// ─── HUD ──────────────────────────────────────────────────────────────
 function drawHUD() {
   ctx.save();
-  ctx.textBaseline = 'top';
-  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8;
+  ctx.textBaseline = 'top'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8;
 
-  // Score
-  const sc = Math.floor(score);
-  ctx.font = `bold ${Math.round(28*scorePopScale)}px Georgia, serif`;
+  ctx.font = `bold ${Math.round(28 * scorePopScale)}px Georgia, serif`;
   ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
-  ctx.fillText(sc + 'm', W/2, 14);
+  ctx.fillText(Math.floor(score) + 'm', W/2, 14);
 
-  // Hi score
   ctx.font = '15px Georgia, serif'; ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(255,250,190,0.88)';
-  ctx.fillText('BEST ' + Math.floor(hiScore) + 'm', W-18, 14);
+  ctx.fillText('BEST ' + Math.floor(hiScore) + 'm', W - 18, 14);
 
-  // Speed
   ctx.font = '14px monospace'; ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.fillText('×'+speed.toFixed(1), 18, 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.fillText('×' + speed.toFixed(1), 18, 14);
 
-  // Day/night icon
-  const np = night();
-  const ix = 50, iy = 52;
-  if (np < 0.5) {
-    ctx.fillStyle = '#ffcc00';
-    ctx.beginPath(); ctx.arc(ix,iy,8,0,Math.PI*2); ctx.fill();
-  } else {
-    ctx.fillStyle = '#ffe9a0';
-    ctx.beginPath(); ctx.arc(ix,iy,8,0,Math.PI*2); ctx.fill();
-    const r0=lerpCol(0x1a,0x04,np),g0=lerpCol(0x0a,0x02,np),b0=lerpCol(0x3e,0x10,np);
-    ctx.fillStyle = `rgb(${r0},${g0},${b0})`;
-    ctx.beginPath(); ctx.arc(ix+5,iy-2,6,0,Math.PI*2); ctx.fill();
+  // Jump pip indicators
+  for (let i = 0; i < 2; i++) {
+    ctx.beginPath();
+    ctx.arc(18 + i*18, 44, 5, 0, Math.PI*2);
+    ctx.fillStyle = i < bat.jumpsLeft ? '#f4a03a' : 'rgba(255,255,255,0.2)';
+    ctx.fill();
   }
+
   ctx.restore();
 }
 
 // ─── Screens ──────────────────────────────────────────────────────────
 function drawStartBat() {
-  ctx.save(); ctx.translate(W/2, H*0.38);
-  ctx.fillStyle = 'rgba(40,22,8,0.75)';
-  const ws=62, wf=0.5, wd=11+wf*13;
+  ctx.save(); ctx.translate(W/2, H * 0.38);
+  ctx.fillStyle = 'rgba(30,18,8,0.8)';
+  const ws = 64, wd = 14;
   ctx.beginPath();
-  ctx.moveTo(-3,-3); ctx.bezierCurveTo(-ws*0.38,-wd,-ws*0.82,wd*wf,-ws/2,wd+2);
+  ctx.moveTo(-3,-3); ctx.bezierCurveTo(-ws*0.38,-wd,-ws*0.82,wd*0.5,-ws/2,wd+2);
   ctx.bezierCurveTo(-ws*0.28,wd+8,-ws*0.08,5,-3,3); ctx.closePath(); ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(3,-3); ctx.bezierCurveTo(ws*0.38,-wd,ws*0.82,wd*wf,ws/2,wd+2);
+  ctx.moveTo(3,-3); ctx.bezierCurveTo(ws*0.38,-wd,ws*0.82,wd*0.5,ws/2,wd+2);
   ctx.bezierCurveTo(ws*0.28,wd+8,ws*0.08,5,3,3); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#1e1208';
-  ctx.beginPath(); ctx.ellipse(0,0,15,10,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#16100a';
+  ctx.beginPath(); ctx.ellipse(0,0,16,10,0,0,Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
 function drawStartScreen() {
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.52)';
-  ctx.fillRect(0,0,W,H);
-
+  ctx.fillStyle = 'rgba(0,0,0,0.52)'; ctx.fillRect(0,0,W,H);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
   ctx.shadowColor = '#ff6b35'; ctx.shadowBlur = 22;
-  ctx.fillStyle = '#f4a03a';
-  ctx.font = 'bold 68px Georgia, serif';
+  ctx.fillStyle = '#f4a03a'; ctx.font = 'bold 68px Georgia, serif';
   ctx.fillText('Bat Farm', W/2, H/2 - 62);
 
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#e8d0a0'; ctx.font = '22px Georgia, serif';
-  ctx.fillText('An Endless Runner', W/2, H/2 - 18);
+  ctx.fillText('Jump over the plants!', W/2, H/2 - 18);
 
-  const blink = Math.sin(frame*0.065) > 0;
-  if (blink) {
+  ctx.fillStyle = '#ccc'; ctx.font = '17px Georgia, serif';
+  ctx.fillText('Space / Click to jump  ·  Double-tap to double-jump', W/2, H/2 + 18);
+
+  if (Math.sin(frame * 0.065) > 0) {
     ctx.fillStyle = '#fff'; ctx.font = '20px Georgia, serif';
-    ctx.fillText('Press Space or Click to Start', W/2, H/2 + 30);
+    ctx.fillText('Press Space or Click to Start', W/2, H/2 + 52);
   }
   if (hiScore > 0) {
     ctx.fillStyle = '#ffcc88'; ctx.font = '18px Georgia, serif';
-    ctx.fillText('Best: ' + Math.floor(hiScore) + 'm', W/2, H/2 + 72);
+    ctx.fillText('Best: ' + Math.floor(hiScore) + 'm', W/2, H/2 + 86);
   }
   ctx.restore();
 }
@@ -777,21 +694,15 @@ function drawDeadScreen() {
     ctx.fillStyle = '#aaa'; ctx.font = '18px Georgia, serif';
     ctx.fillText('Best: ' + Math.floor(hiScore) + 'm', W/2, H/2 + 26);
   }
-
-  const blink = Math.sin(frame*0.065) > 0;
-  if (blink) {
+  if (Math.sin(frame * 0.065) > 0) {
     ctx.fillStyle = '#fff'; ctx.font = '20px Georgia, serif';
     ctx.fillText('Press Space or Click to Restart', W/2, H/2 + 68);
   }
   ctx.restore();
 }
 
-// ─── Game Loop ────────────────────────────────────────────────────────
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
+// ─── Loop ─────────────────────────────────────────────────────────────
+function loop() { update(); draw(); requestAnimationFrame(loop); }
 loop();
 </script>
 </body>
