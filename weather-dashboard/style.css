@@ -84,46 +84,14 @@ body.bg-clear-night::before {
   z-index: 0;
 }
 
-/* Rain — cool steel blue with falling drops */
+/* Rain — cool steel blue */
 body.bg-rain {
   background: linear-gradient(160deg, #2c5282 0%, #3a7fc1 50%, #4a90d9 100%);
-}
-body.bg-rain::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    175deg,
-    transparent 0px,
-    transparent 14px,
-    rgba(255,255,255,0.12) 14px,
-    rgba(255,255,255,0.12) 15px
-  );
-  background-size: 6px 28px;
-  animation: rain-fall 0.65s linear infinite;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* Thunderstorm — dark navy/purple with lightning flash */
 body.bg-thunderstorm {
   background: linear-gradient(160deg, #1a0533 0%, #2d1060 50%, #1e0a45 100%);
-}
-body.bg-thunderstorm::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    175deg,
-    transparent 0px,
-    transparent 14px,
-    rgba(200,200,255,0.08) 14px,
-    rgba(200,200,255,0.08) 15px
-  );
-  background-size: 6px 28px;
-  animation: rain-fall 0.5s linear infinite;
-  pointer-events: none;
-  z-index: 0;
 }
 body.bg-thunderstorm::after {
   content: '';
@@ -209,6 +177,46 @@ body.bg-clouds {
 @keyframes fog-drift {
   0%   { opacity: 0.6; transform: translateX(-15px); }
   100% { opacity: 1;   transform: translateX(15px);  }
+}
+
+/* =========================================================
+   Raindrops
+   ========================================================= */
+.rain-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.raindrop {
+  position: absolute;
+  top: -20px;
+  width: 3px;
+  border-radius: 0 0 50% 50%;
+  animation: raindrop-fall linear infinite;
+  opacity: 0;
+  animation-fill-mode: both;
+}
+
+/* Rain: blue-white drops */
+body.bg-rain .raindrop {
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(200,230,255,0.85));
+  box-shadow: 0 0 4px rgba(150,200,255,0.3);
+}
+
+/* Thunderstorm: slightly more opaque, purpler tint */
+body.bg-thunderstorm .raindrop {
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(210,210,255,0.9));
+  box-shadow: 0 0 4px rgba(180,160,255,0.3);
+}
+
+@keyframes raindrop-fall {
+  0%   { transform: translateY(-20px); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 0.8; }
+  100% { transform: translateY(105vh); opacity: 0; }
 }
 
 /* =========================================================

@@ -201,6 +201,43 @@ function setWeatherBackground(conditionId, sunrise, sunset, dt) {
   }
 
   if (cls) document.body.classList.add(cls);
+
+  // Spawn or clear raindrops
+  const isRainy = cls === 'bg-rain' || cls === 'bg-thunderstorm';
+  isRainy ? spawnRain(cls === 'bg-thunderstorm') : clearRain();
+}
+
+// =========================================================
+// Raindrop generator
+// =========================================================
+const rainContainer = document.getElementById('rain-container');
+
+function spawnRain(heavy) {
+  clearRain();
+  const count = heavy ? 120 : 80;
+  const fragment = document.createDocumentFragment();
+
+  for (let i = 0; i < count; i++) {
+    const drop = document.createElement('div');
+    drop.className = 'raindrop';
+
+    const height = 10 + Math.random() * 18;   // 10–28px tall
+    const duration = heavy
+      ? 0.4 + Math.random() * 0.4              // 0.4–0.8s (fast)
+      : 0.6 + Math.random() * 0.6;             // 0.6–1.2s
+
+    drop.style.left     = Math.random() * 100 + 'vw';
+    drop.style.height   = height + 'px';
+    drop.style.animationDuration  = duration + 's';
+    drop.style.animationDelay     = -(Math.random() * duration) + 's';
+
+    fragment.appendChild(drop);
+  }
+  rainContainer.appendChild(fragment);
+}
+
+function clearRain() {
+  rainContainer.innerHTML = '';
 }
 
 // =========================================================
