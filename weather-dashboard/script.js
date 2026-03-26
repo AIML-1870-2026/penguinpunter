@@ -65,6 +65,9 @@ function init() {
   cityInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSearch(); });
   unitC.addEventListener('change', () => setUnit('C'));
   unitF.addEventListener('change', () => setUnit('F'));
+
+  // Load Omaha weather on startup
+  fetchWeather('Omaha');
 }
 
 // =========================================================
