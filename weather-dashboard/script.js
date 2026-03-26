@@ -177,11 +177,11 @@ function renderCurrentWeather(data) {
 function setWeatherBackground(conditionId, sunrise, sunset, dt) {
   const bgClasses = [
     'bg-clear-day','bg-clear-night','bg-rain','bg-thunderstorm',
-    'bg-fog','bg-clouds','bg-snow','bg-default'
+    'bg-fog','bg-clouds','bg-snow'
   ];
-  weatherCard.classList.remove(...bgClasses);
+  document.body.classList.remove(...bgClasses);
 
-  let cls = 'bg-default';
+  let cls = null;
   if (conditionId >= 200 && conditionId < 300) {
     cls = 'bg-thunderstorm';
   } else if (conditionId >= 300 && conditionId < 600) {
@@ -197,7 +197,7 @@ function setWeatherBackground(conditionId, sunrise, sunset, dt) {
     cls = 'bg-clouds';
   }
 
-  weatherCard.classList.add(cls);
+  if (cls) document.body.classList.add(cls);
 }
 
 // =========================================================
