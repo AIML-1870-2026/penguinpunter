@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-wrapper">
+    <header class="app-header">
+      <h1>Weather Dashboard</h1>
+    </header>
+
+    <!-- Search Section -->
+    <section class="search-section" aria-label="City search">
+      <div class="search-row">
+        <label for="city-input" class="sr-only">Enter city name</label>
+        <input
+          type="text"
+          id="city-input"
+          class="city-input"
+          placeholder="Enter a city (e.g. Omaha, Paris)"
+          autocomplete="off"
+          aria-label="City name"
+        />
+        <button id="search-btn" class="search-btn" aria-label="Get weather">Get Weather</button>
+      </div>
+
+      <!-- Unit Toggle -->
+      <div class="unit-toggle" role="group" aria-label="Temperature unit">
+        <label class="unit-label">
+          <input type="radio" name="unit" value="C" id="unit-c" /> Celsius
+        </label>
+        <label class="unit-label">
+          <input type="radio" name="unit" value="F" id="unit-f" /> Fahrenheit
+        </label>
+      </div>
+
+      <!-- Recent Searches -->
+      <div class="recent-searches" id="recent-searches" aria-label="Recent searches"></div>
+    </section>
+
+    <!-- Error Message -->
+    <div class="error-banner" id="error-banner" role="alert" aria-live="polite" hidden></div>
+
+    <!-- Loading Skeleton -->
+    <div class="skeleton-wrapper" id="skeleton-wrapper" hidden>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-strip"></div>
+      <div class="skeleton skeleton-forecast"></div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="main-content" hidden>
+
+      <!-- Current Weather Card -->
+      <section class="weather-card" id="weather-card" aria-label="Current weather">
+        <div class="weather-card-inner">
+          <div class="weather-location">
+            <span id="city-name" class="city-name"></span>
+            <span id="country-code" class="country-code"></span>
+          </div>
+          <div class="weather-main">
+            <img id="weather-icon" class="weather-icon" src="" alt="" />
+            <div class="weather-temps">
+              <span id="temperature" class="temperature"></span>
+              <span id="condition-desc" class="condition-desc"></span>
+            </div>
+          </div>
+          <div class="weather-details">
+            <div class="detail-item">
+              <span class="detail-label">Humidity</span>
+              <span id="humidity" class="detail-value"></span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Wind</span>
+              <span id="wind-speed" class="detail-value"></span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Updated</span>
+              <span id="last-updated" class="detail-value"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AQI Panel -->
+      <section class="aqi-panel" id="aqi-panel" aria-label="Air quality index" hidden>
+        <h2 class="section-title">Air Quality</h2>
+        <div class="aqi-content">
+          <div class="aqi-score-block">
+            <span class="aqi-score" id="aqi-score"></span>
+            <span class="aqi-label" id="aqi-label"></span>
+          </div>
+          <div class="aqi-bar-wrap">
+            <div class="aqi-bar" id="aqi-bar"></div>
+          </div>
+          <div class="aqi-pollutants" id="aqi-pollutants"></div>
+        </div>
+      </section>
+
+      <!-- Hourly Forecast Strip -->
+      <section class="hourly-section" id="hourly-section" aria-label="Hourly forecast" hidden>
+        <h2 class="section-title">Next 12 Hours</h2>
+        <div class="hourly-container">
+          <div class="hourly-strip" id="hourly-strip"></div>
+        </div>
+      </section>
+
+      <!-- 5-Day Forecast -->
+      <section class="forecast-section" id="forecast-section" aria-label="5-day forecast" hidden>
+        <h2 class="section-title">5-Day Forecast</h2>
+        <div class="forecast-grid" id="forecast-grid"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
