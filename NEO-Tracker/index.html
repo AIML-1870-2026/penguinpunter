@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEO Close Approach Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/globe.gl"></script>
+<style>
+  :root {
+    --bg: #050a14;
+    --surface: #0d1b2a;
+    --surface-2: #112240;
+    --accent-cyan: #00d4ff;
+    --accent-amber: #ffab40;
+    --accent-red: #ff4d4d;
+    --accent-green: #39ff8e;
+    --text-primary: #e8f4fd;
+    --text-muted: #6b8fad;
+    --border: rgba(0, 212, 255, 0.15);
+    --sidebar-w: 220px;
+    --sidebar-w-collapsed: 64px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Starfield */
+  #starfield {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(0,30,60,0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(0,20,50,0.2) 0%, transparent 50%);
+  }
+
+  #starfield canvas { position: absolute; top: 0; left: 0; }
+
+  /* Layout */
+  #app { position: relative; z-index: 1; display: flex; height: 100vh; }
+
+  /* Sidebar */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease, min-width 0.3s ease;
+    overflow: hidden;
+    z-index: 100;
+  }
+
+  #sidebar.collapsed { width: var(--sidebar-w-collapsed); min-width: var(--sidebar-w-collapsed); }
+
+  .sidebar-logo {
+    padding: 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: radial-gradient(circle at 35% 35%, #1a6fa8, #050a14);
+    border-radius: 50%;
+    border: 2px solid var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0,212,255,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .logo-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .nav-item:hover { background: rgba(0,212,255,0.06); }
+
+  .nav-item.active {
+    border-left-color: var(--accent-cyan);
+    background: rgba(0,212,255,0.1);
+    color: var(--accent-cyan);
+  }
+
+  .nav-icon { font-size: 18px; flex-shrink: 0; width: 20px; text-align: center; }
+
+  .nav-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+
+  .nav-item.active .nav-label { color: var(--accent-cyan); }
+  .nav-item:hover .nav-label { color: var(--text-primary); }
+
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  #settings-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-muted); padding: 8px 12px;
+    border-radius: 6px; cursor: pointer; font-family: 'Space Mono', monospace;
+    font-size: 11px; width: 100%; display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s; white-space: nowrap;
+  }
+
+  #settings-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+  /* Main Content */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Top Bar */
+  #topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+
+  #sidebar-toggle {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 18px; padding: 4px;
+    transition: color 0.2s;
+  }
+  #sidebar-toggle:hover { color: var(--accent-cyan); }
+
+  .topbar-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+
+  #date-display {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  #last-updated {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-cyan);
+    opacity: 0.7;
+  }
+
+  #refresh-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-muted); padding: 6px 12px;
+    border-radius: 6px; cursor: pointer;
+    font-family: 'Space Mono', monospace; font-size: 11px;
+    transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+  }
+  #refresh-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  #refresh-btn.spinning .refresh-icon { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Content Area */
+  #content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Tab Panels */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Cards & Surfaces */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0,212,255,0.03) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .card-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  /* Hero Stats Bar */
+  #hero-stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: rgba(0,212,255,0.4); }
+
+  .stat-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent-cyan), transparent);
+  }
+
+  .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stat-hazard .stat-value { color: var(--accent-red); }
+  .stat-hazard::after { background: linear-gradient(90deg, var(--accent-red), transparent); }
+
+  /* Controls Row */
+  .controls-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .controls-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+
+  .btn-group { display: flex; gap: 4px; }
+
+  .btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+
+  .btn:hover { border-color: var(--accent-cyan); color: var(--text-primary); }
+  .btn.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0,212,255,0.1); }
+
+  select, input[type="date"], input[type="number"], input[type="text"] {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  select:focus, input:focus { border-color: var(--accent-cyan); }
+
+  /* NEO Cards */
+  #neo-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .neo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .neo-card:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-1px); }
+
+  .neo-card.hazardous { border-left: 3px solid var(--accent-red); }
+  .neo-card.safe { border-left: 3px solid rgba(57,255,142,0.4); }
+
+  .neo-card-main { display: flex; flex-direction: column; gap: 8px; }
+
+  .neo-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .neo-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .neo-meta-item { display: flex; flex-direction: column; gap: 2px; }
+
+  .neo-meta-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+
+  .neo-meta-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .badge-hazardous {
+    background: rgba(255,77,77,0.15);
+    border: 1px solid var(--accent-red);
+    color: var(--accent-red);
+  }
+
+  .badge-safe {
+    background: rgba(57,255,142,0.1);
+    border: 1px solid rgba(57,255,142,0.4);
+    color: var(--accent-green);
+  }
+
+  /* Proximity Bar */
+  .proximity-bar-container { margin-top: 8px; }
+
+  .proximity-bar-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .proximity-bar-track {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    position: relative;
+    overflow: visible;
+  }
+
+  .proximity-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  .proximity-bar-fill.close { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+  .proximity-bar-fill.medium { background: var(--accent-amber); box-shadow: 0 0 6px var(--accent-amber); }
+  .proximity-bar-fill.far { background: var(--accent-green); }
+
+  .moon-marker {
+    position: absolute;
+    top: -4px;
+    width: 2px;
+    height: 14px;
+    background: white;
+    border-radius: 1px;
+  }
+
+  .moon-label {
+    position: absolute;
+    top: -18px;
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: rgba(255,255,255,0.6);
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  /* Loading States */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 16px;
+  }
+
+  .scan-animation {
+    width: 80px; height: 80px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    border-top-color: var(--accent-cyan);
+    animation: spin 1s linear infinite;
+  }
+
+  .loading-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-cyan);
+    animation: pulse 1.5s ease-in-out infinite;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .error-icon { font-size: 40px; }
+
+  .error-msg {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-red);
+  }
+
+  .retry-btn {
+    background: rgba(255,77,77,0.1);
+    border: 1px solid var(--accent-red);
+    color: var(--accent-red);
+    padding: 8px 20px; border-radius: 6px;
+    cursor: pointer; font-family: 'Space Mono', monospace; font-size: 11px;
+    transition: all 0.2s;
+  }
+
+  .retry-btn:hover { background: rgba(255,77,77,0.2); }
+
+  /* Tab 2: Size & Speed */
+  #size-speed-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .size-comparison-svg { width: 100%; overflow: visible; }
+
+  .speed-track {
+    position: relative;
+    height: 44px;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .speed-track-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .speed-track-bar-container {
+    flex: 1;
+    height: 8px;
+    background: var(--surface-2);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .speed-track-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .speed-track-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 80px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Tab 3: Schedule */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .data-table th {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .data-table th:hover { color: var(--accent-cyan); }
+  .data-table th.sorted { color: var(--accent-cyan); }
+
+  .data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-primary);
+  }
+
+  .data-table tr:hover td { background: rgba(0,212,255,0.04); }
+
+  .dist-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  /* Timeline */
+  #timeline-container {
+    overflow-x: auto;
+    padding: 20px 0;
+    margin-bottom: 20px;
+  }
+
+  #timeline-svg { overflow: visible; }
+
+  /* Tab 4: Sentry */
+  .sentry-row { cursor: pointer; }
+  .sentry-row:hover td { background: rgba(255,171,64,0.05); }
+
+  .expandable-row td {
+    padding: 0;
+    border: none;
+  }
+
+  .expand-content {
+    display: none;
+    background: var(--surface-2);
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .expand-content.open { display: block; }
+
+  .torino-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .torino-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .torino-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Tab 5: Globe */
+  #globe-container {
+    position: relative;
+    height: calc(100vh - 160px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  #globe-el { width: 100%; height: 100%; }
+
+  #globe-controls {
+    position: absolute;
+    top: 16px; left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+  }
+
+  .globe-ctrl-btn {
+    background: rgba(13,27,42,0.85);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+  }
+
+  .globe-ctrl-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .globe-ctrl-btn.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(0,212,255,0.1); }
+
+  #globe-detail {
+    position: absolute;
+    top: 16px; right: 16px; bottom: 16px;
+    width: 280px;
+    background: rgba(13,27,42,0.9);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    backdrop-filter: blur(12px);
+    z-index: 10;
+    display: none;
+    overflow-y: auto;
+  }
+
+  #globe-detail.visible { display: block; }
+
+  #globe-disclaimer {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+    background: rgba(5,10,20,0.7);
+    padding: 6px 12px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  /* Modal */
+  #modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(5,10,20,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #modal-overlay.open { display: flex; }
+
+  #settings-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 480px;
+    max-width: 90vw;
+    position: relative;
+  }
+
+  .modal-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+  }
+
+  .modal-field { margin-bottom: 20px; }
+
+  .modal-label {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .modal-input {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    outline: none;
+  }
+
+  .modal-input:focus { border-color: var(--accent-cyan); }
+
+  .key-status {
+    margin-top: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .key-status.demo { color: var(--accent-amber); background: rgba(255,171,64,0.1); border: 1px solid rgba(255,171,64,0.3); }
+  .key-status.personal { color: var(--accent-green); background: rgba(57,255,142,0.1); border: 1px solid rgba(57,255,142,0.3); }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+
+  .btn-primary {
+    background: rgba(0,212,255,0.15);
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover { background: rgba(0,212,255,0.25); }
+
+  .btn-secondary {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover { border-color: var(--text-muted); color: var(--text-primary); }
+
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; color: var(--text-muted);
+    font-size: 20px; cursor: pointer; padding: 4px;
+    transition: color 0.2s;
+  }
+
+  .modal-close:hover { color: var(--text-primary); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.3); }
+
+  /* Skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-wave 1.5s ease-in-out infinite;
+    border-radius: 4px;
+  }
+
+  @keyframes skeleton-wave { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    #sidebar { width: var(--sidebar-w-collapsed); min-width: var(--sidebar-w-collapsed); }
+    .nav-label { display: none; }
+    .logo-text { display: none; }
+    #settings-btn span { display: none; }
+    #hero-stats { grid-template-columns: repeat(3, 1fr); }
+    #size-speed-layout { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    #sidebar { display: none; }
+    #app { flex-direction: column; }
+    #content { padding: 16px; }
+    #mobile-nav { display: flex; }
+    #hero-stats { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  #mobile-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    justify-content: space-around;
+    padding: 8px 0;
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 10px;
+    transition: color 0.2s;
+  }
+
+  .mobile-nav-item.active { color: var(--accent-cyan); }
+  .mobile-nav-item .nav-icon { font-size: 20px; }
+
+  /* Count-up animation */
+  .count-up { transition: all 0.5s ease; }
+
+  /* Tooltip */
+  .tooltip { position: relative; }
+  .tooltip::after {
+    content: attr(data-tip);
+    position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-primary); padding: 6px 10px; border-radius: 6px;
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s; z-index: 100;
+  }
+  .tooltip:hover::after { opacity: 1; }
+
+  /* Section headings */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .result-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+
+  /* Palermo explainer */
+  .col-explainer {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-amber);
+    display: none;
+  }
+
+  .col-explainer.visible { display: block; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0,212,255,0.5);
+  }
+
+  .object-dropdown-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .expand-arrow {
+    display: inline-block; transition: transform 0.2s; font-size: 10px; margin-right: 6px;
+  }
+  .expand-arrow.open { transform: rotate(90deg); }
+</style>
+</head>
+<body>
+
+<!-- Starfield -->
+<div id="starfield"><canvas id="star-canvas"></canvas></div>
+
+<!-- App Layout -->
+<div id="app">
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌍</div>
+      <div class="logo-text">NEO<br>TRACKER</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" data-tab="tab-week">
+        <span class="nav-icon">🌍</span>
+        <span class="nav-label">This Week</span>
+      </div>
+      <div class="nav-item" data-tab="tab-context">
+        <span class="nav-icon">📏</span>
+        <span class="nav-label">Size & Speed</span>
+      </div>
+      <div class="nav-item" data-tab="tab-schedule">
+        <span class="nav-icon">📅</span>
+        <span class="nav-label">Schedule</span>
+      </div>
+      <div class="nav-item" data-tab="tab-sentry">
+        <span class="nav-icon">☄️</span>
+        <span class="nav-label">Impact Risk</span>
+      </div>
+      <div class="nav-item" data-tab="tab-globe">
+        <span class="nav-icon">🌐</span>
+        <span class="nav-label">3D Globe</span>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button id="settings-btn">⚙️ <span>API Settings</span></button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div id="main">
+    <!-- Top Bar -->
+    <div id="topbar">
+      <div class="topbar-left">
+        <button id="sidebar-toggle">☰</button>
+        <span class="topbar-title">NEO Close Approach Tracker</span>
+      </div>
+      <div class="topbar-right">
+        <span id="date-display"></span>
+        <span id="last-updated">—</span>
+        <button id="refresh-btn"><span class="refresh-icon">↻</span> Refresh</button>
+        <button id="settings-btn-top">⚙️</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="content">
+
+      <!-- TAB 1: THIS WEEK -->
+      <div id="tab-week" class="tab-panel active">
+        <div id="hero-stats">
+          <div class="stat-card">
+            <div class="stat-label">NEOs This Week</div>
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-sub">total objects</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Closest Approach</div>
+            <div class="stat-value" id="stat-closest-ld">—</div>
+            <div class="stat-sub" id="stat-closest-name">loading...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Largest Object</div>
+            <div class="stat-value" id="stat-largest">—</div>
+            <div class="stat-sub" id="stat-largest-name">loading...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Fastest Flyby</div>
+            <div class="stat-value" id="stat-fastest">—</div>
+            <div class="stat-sub" id="stat-fastest-name">loading...</div>
+          </div>
+          <div class="stat-card stat-hazard">
+            <div class="stat-label">Hazardous</div>
+            <div class="stat-value" id="stat-hazardous">—</div>
+            <div class="stat-sub">potentially hazardous</div>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <span class="controls-label">Sort:</span>
+          <div class="btn-group" id="sort-btns">
+            <button class="btn active" data-sort="date">Date</button>
+            <button class="btn" data-sort="distance">Distance</button>
+            <button class="btn" data-sort="size">Size</button>
+            <button class="btn" data-sort="velocity">Velocity</button>
+          </div>
+          <span class="controls-label" style="margin-left:12px;">Filter:</span>
+          <div class="btn-group" id="filter-btns">
+            <button class="btn active" data-filter="all">All</button>
+            <button class="btn" data-filter="hazardous">Hazardous Only</button>
+          </div>
+        </div>
+
+        <div id="neo-list-container">
+          <div class="loading-state">
+            <div class="scan-animation"></div>
+            <div class="loading-text">Scanning for near-Earth objects...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: SIZE & SPEED CONTEXT -->
+      <div id="tab-context" class="tab-panel">
+        <div class="object-dropdown-row">
+          <span class="controls-label">Select Object:</span>
+          <select id="context-object-select">
+            <option value="">-- Loading objects --</option>
+          </select>
+        </div>
+        <div id="size-speed-layout">
+          <div class="card">
+            <div class="card-title">Size Comparison</div>
+            <div id="size-comparison-area">
+              <div class="loading-state" style="padding: 20px;">
+                <div class="scan-animation"></div>
+                <div class="loading-text">Loading...</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Velocity Context</div>
+            <div id="speed-comparison-area">
+              <div class="loading-state" style="padding: 20px;">
+                <div class="scan-animation"></div>
+                <div class="loading-text">Loading...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: CLOSE APPROACH SCHEDULE -->
+      <div id="tab-schedule" class="tab-panel">
+        <div class="controls-row" style="flex-wrap:wrap; gap:16px;">
+          <div>
+            <label class="controls-label">Date From</label>
+            <input type="date" id="sch-date-from">
+          </div>
+          <div>
+            <label class="controls-label">Date To</label>
+            <input type="date" id="sch-date-to">
+          </div>
+          <div style="min-width:200px;">
+            <label class="controls-label">Max Miss Distance: <span id="sch-dist-val">10</span> LD</label>
+            <input type="range" id="sch-dist-slider" min="1" max="50" value="10">
+          </div>
+          <div>
+            <label class="controls-label">Min Diameter (m)</label>
+            <input type="number" id="sch-min-diam" placeholder="0" style="width:100px;">
+          </div>
+          <button class="btn active" id="sch-fetch-btn">Fetch Data</button>
+        </div>
+
+        <div id="timeline-container">
+          <svg id="timeline-svg" height="60"></svg>
+        </div>
+
+        <div id="schedule-table-container">
+          <div class="loading-state">
+            <div class="scan-animation"></div>
+            <div class="loading-text">Querying close approach database...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: IMPACT RISK -->
+      <div id="tab-sentry" class="tab-panel">
+        <div id="sentry-summary" style="margin-bottom:20px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+          <div class="stat-card">
+            <div class="stat-label">Objects on Watch List</div>
+            <div class="stat-value" id="sentry-count">—</div>
+            <div class="stat-sub">non-zero impact probability</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Highest Torino Scale</div>
+            <div class="stat-value" id="sentry-torino">—</div>
+            <div class="stat-sub" id="sentry-torino-name">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Nearest Potential Impact</div>
+            <div class="stat-value" id="sentry-nearest">—</div>
+            <div class="stat-sub" id="sentry-nearest-name">—</div>
+          </div>
+        </div>
+
+        <div id="sentry-table-container">
+          <div class="loading-state">
+            <div class="scan-animation"></div>
+            <div class="loading-text">Loading Sentry watch list...</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <div class="card-title">Torino Scale Legend</div>
+          <div class="torino-legend" id="torino-legend"></div>
+        </div>
+      </div>
+
+      <!-- TAB 5: 3D GLOBE -->
+      <div id="tab-globe" class="tab-panel">
+        <div id="globe-container">
+          <div id="globe-el"></div>
+          <div id="globe-controls">
+            <button class="globe-ctrl-btn active" id="toggle-moon">🌙 Moon Marker</button>
+            <button class="globe-ctrl-btn active" id="toggle-labels">🏷 Labels</button>
+            <button class="globe-ctrl-btn" id="reset-camera">⌖ Reset View</button>
+          </div>
+          <div id="globe-detail">
+            <div class="card-title" style="margin-bottom:12px;">SELECT AN OBJECT</div>
+            <p style="font-size:12px; color:var(--text-muted); font-family:'Space Mono',monospace;">
+              Click any asteroid marker on the globe to view details.
+            </p>
+          </div>
+          <div id="globe-disclaimer">
+            Dot positions are illustrative — actual flyby geometry depends on orbital mechanics at time of closest approach.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Mobile Nav -->
+<nav id="mobile-nav">
+  <div class="mobile-nav-item active" data-tab="tab-week"><span class="nav-icon">🌍</span><span>This Week</span></div>
+  <div class="mobile-nav-item" data-tab="tab-context"><span class="nav-icon">📏</span><span>Size</span></div>
+  <div class="mobile-nav-item" data-tab="tab-schedule"><span class="nav-icon">📅</span><span>Schedule</span></div>
+  <div class="mobile-nav-item" data-tab="tab-sentry"><span class="nav-icon">☄️</span><span>Risk</span></div>
+  <div class="mobile-nav-item" data-tab="tab-globe"><span class="nav-icon">🌐</span><span>Globe</span></div>
+</nav>
+
+<!-- Settings Modal -->
+<div id="modal-overlay">
+  <div id="settings-modal">
+    <button class="modal-close" id="modal-close-btn">✕</button>
+    <div class="modal-title">⚙ API Key Settings</div>
+    <div class="modal-field">
+      <label class="modal-label">NASA API Key (for NeoWs)</label>
+      <input type="text" class="modal-input" id="api-key-input" placeholder="DEMO_KEY">
+      <div id="key-status" class="key-status demo">Using DEMO_KEY (rate-limited)</div>
+      <p style="margin-top:8px; font-size:11px; color:var(--text-muted);">
+        Get a free personal key at <strong style="color:var(--accent-cyan)">api.nasa.gov</strong>
+      </p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="save-key-btn">Save Key</button>
+      <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE & CONSTANTS
+// ============================================================
+const AU_TO_KM = 149597870.7;
+const LD_TO_KM = 384400;
+const AU_TO_LD = AU_TO_KM / LD_TO_KM; // ~389.17
+
+let state = {
+  apiKey: localStorage.getItem('neo_api_key') || 'DEMO_KEY',
+  neoData: null,
+  neoList: [],
+  sortBy: 'date',
+  filterBy: 'all',
+  activeTab: 'tab-week',
+  globeInstance: null,
+  showMoon: true,
+  showLabels: true,
+  scheduleData: null,
+  sentryData: null,
+  lastUpdated: null,
+  selectedContextNeo: null,
+};
+
+// ============================================================
+// STARFIELD
+// ============================================================
+(function initStars() {
+  const canvas = document.getElementById('star-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  let W, H;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function makeStars(n) {
+    stars = [];
+    for (let i = 0; i < n; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.2 + 0.2,
+        a: Math.random(),
+        da: (Math.random() - 0.5) * 0.005,
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    stars.forEach(s => {
+      s.a = Math.max(0.1, Math.min(1, s.a + s.da));
+      if (Math.random() < 0.001) s.da = -s.da;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,220,255,${s.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  makeStars(200);
+  draw();
+  window.addEventListener('resize', () => { resize(); makeStars(200); });
+})();
+
+// ============================================================
+// DATE & TIME
+// ============================================================
+function updateClock() {
+  const now = new Date();
+  document.getElementById('date-display').textContent =
+    now.toUTCString().replace('GMT', 'UTC');
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+
+function setLastUpdated() {
+  state.lastUpdated = new Date();
+  document.getElementById('last-updated').textContent =
+    'Last updated: ' + state.lastUpdated.toLocaleTimeString();
+}
+
+function getDateStr(d) {
+  return d.toISOString().split('T')[0];
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.tab === tabId);
+  });
+  document.getElementById(tabId).classList.add('active');
+  state.activeTab = tabId;
+
+  if (tabId === 'tab-globe' && !state.globeInstance && state.neoList.length > 0) {
+    initGlobe();
+  }
+  if (tabId === 'tab-globe' && state.neoList.length === 0) {
+    fetchWeekData().then(() => initGlobe());
+  }
+}
+
+document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(item => {
+  item.addEventListener('click', () => switchTab(item.dataset.tab));
+});
+
+document.getElementById('sidebar-toggle').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+// ============================================================
+// SETTINGS MODAL
+// ============================================================
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('api-key-input').value = state.apiKey === 'DEMO_KEY' ? '' : state.apiKey;
+  updateKeyStatus();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function updateKeyStatus() {
+  const el = document.getElementById('key-status');
+  if (state.apiKey === 'DEMO_KEY') {
+    el.className = 'key-status demo';
+    el.textContent = 'Using DEMO_KEY (rate-limited: 30 req/hour)';
+  } else {
+    el.className = 'key-status personal';
+    el.textContent = '✓ Personal key active';
+  }
+}
+
+document.getElementById('settings-btn').addEventListener('click', openModal);
+document.getElementById('settings-btn-top').addEventListener('click', openModal);
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+document.getElementById('save-key-btn').addEventListener('click', () => {
+  const val = document.getElementById('api-key-input').value.trim();
+  state.apiKey = val || 'DEMO_KEY';
+  localStorage.setItem('neo_api_key', state.apiKey);
+  updateKeyStatus();
+  closeModal();
+  // Refetch with new key
+  state.neoData = null;
+  state.neoList = [];
+  fetchWeekData();
+});
+
+// ============================================================
+// REFRESH
+// ============================================================
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  state.neoData = null;
+  state.neoList = [];
+  state.scheduleData = null;
+  state.sentryData = null;
+  fetchWeekData();
+  if (state.activeTab === 'tab-schedule') fetchScheduleData();
+  if (state.activeTab === 'tab-sentry') fetchSentryData();
+});
+
+// ============================================================
+// API HELPERS
+// ============================================================
+async function fetchJSON(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+function showRefreshSpin(on) {
+  document.getElementById('refresh-btn').classList.toggle('spinning', on);
+}
+
+// ============================================================
+// TAB 1: THIS WEEK — NeoWs
+// ============================================================
+async function fetchWeekData() {
+  showRefreshSpin(true);
+  const container = document.getElementById('neo-list-container');
+  container.innerHTML = `<div class="loading-state"><div class="scan-animation"></div><div class="loading-text">Scanning for near-Earth objects...</div></div>`;
+
+  const today = new Date();
+  const end = new Date(today);
+  end.setDate(end.getDate() + 6);
+
+  const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${getDateStr(today)}&end_date=${getDateStr(end)}&api_key=${state.apiKey}`;
+
+  try {
+    const data = await fetchJSON(url);
+    state.neoData = data;
+    processNeoData(data);
+    setLastUpdated();
+    renderNeoList();
+    populateContextDropdown();
+    if (state.activeTab === 'tab-context') renderContextTab();
+    if (state.activeTab === 'tab-globe') initGlobe();
+  } catch (err) {
+    container.innerHTML = `<div class="error-state">
+      <div class="error-icon">⚠</div>
+      <div class="error-msg">Failed to fetch NEO data: ${err.message}</div>
+      <button class="retry-btn" onclick="fetchWeekData()">↻ Retry</button>
+    </div>`;
+  } finally {
+    showRefreshSpin(false);
+  }
+}
+
+function processNeoData(data) {
+  const all = [];
+  Object.values(data.near_earth_objects).forEach(dayArr => {
+    dayArr.forEach(neo => {
+      const ca = neo.close_approach_data[0];
+      all.push({
+        id: neo.id,
+        name: neo.name,
+        hazardous: neo.is_potentially_hazardous_asteroid,
+        diamMin: neo.estimated_diameter.meters.estimated_diameter_min,
+        diamMax: neo.estimated_diameter.meters.estimated_diameter_max,
+        diamAvg: (neo.estimated_diameter.meters.estimated_diameter_min + neo.estimated_diameter.meters.estimated_diameter_max) / 2,
+        date: ca.close_approach_date_full || ca.close_approach_date,
+        dateObj: new Date(ca.close_approach_date_full || ca.close_approach_date),
+        missKm: parseFloat(ca.miss_distance.kilometers),
+        missLD: parseFloat(ca.miss_distance.lunar),
+        velocityKms: parseFloat(ca.relative_velocity.kilometers_per_second),
+        orbitClass: neo.orbital_data?.orbit_class?.orbit_class_type || 'Unknown',
+      });
+    });
+  });
+  state.neoList = all;
+
+  // Hero stats
+  if (all.length === 0) return;
+  const closest = all.reduce((a, b) => a.missLD < b.missLD ? a : b);
+  const largest = all.reduce((a, b) => a.diamAvg > b.diamAvg ? a : b);
+  const fastest = all.reduce((a, b) => a.velocityKms > b.velocityKms ? a : b);
+  const hazCount = all.filter(n => n.hazardous).length;
+
+  animateValue('stat-total', all.length);
+  document.getElementById('stat-closest-ld').textContent = closest.missLD.toFixed(2) + ' LD';
+  document.getElementById('stat-closest-name').textContent = closest.name;
+  document.getElementById('stat-largest').textContent = largest.diamAvg.toFixed(0) + ' m';
+  document.getElementById('stat-largest-name').textContent = largest.name;
+  document.getElementById('stat-fastest').textContent = fastest.velocityKms.toFixed(1) + ' km/s';
+  document.getElementById('stat-fastest-name').textContent = fastest.name;
+  animateValue('stat-hazardous', hazCount);
+}
+
+function animateValue(id, target) {
+  const el = document.getElementById(id);
+  let current = 0;
+  const step = target / 30;
+  const interval = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = Math.round(current);
+    if (current >= target) clearInterval(interval);
+  }, 30);
+}
+
+function getSortedFiltered() {
+  let list = [...state.neoList];
+  if (state.filterBy === 'hazardous') list = list.filter(n => n.hazardous);
+  list.sort((a, b) => {
+    if (state.sortBy === 'date') return a.dateObj - b.dateObj;
+    if (state.sortBy === 'distance') return a.missLD - b.missLD;
+    if (state.sortBy === 'size') return b.diamAvg - a.diamAvg;
+    if (state.sortBy === 'velocity') return b.velocityKms - a.velocityKms;
+    return 0;
+  });
+  return list;
+}
+
+function renderNeoList() {
+  const container = document.getElementById('neo-list-container');
+  const list = getSortedFiltered();
+
+  if (list.length === 0) {
+    container.innerHTML = `<div class="error-state"><div class="error-icon">🔭</div><div class="error-msg">No objects match current filters.</div></div>`;
+    return;
+  }
+
+  const maxLD = Math.min(Math.max(...list.map(n => n.missLD)), 20);
+
+  container.innerHTML = `<div id="neo-list">${list.map(neo => renderNeoCard(neo, maxLD)).join('')}</div>`;
+
+  // Animate proximity bars after render
+  requestAnimationFrame(() => {
+    list.forEach((neo, i) => {
+      const fill = document.getElementById(`bar-fill-${i}`);
+      if (fill) {
+        const pct = Math.min(neo.missLD / maxLD * 100, 100);
+        fill.style.width = pct + '%';
+      }
+    });
+  });
+}
+
+function renderNeoCard(neo, maxLD) {
+  const idx = state.neoList.indexOf(neo);
+  const displayIdx = getSortedFiltered().indexOf(neo);
+  const barPct = Math.min(neo.missLD / maxLD * 100, 100);
+  const moonPct = Math.min(1 / maxLD * 100, 100);
+  const barClass = neo.missLD < 1 ? 'close' : neo.missLD < 5 ? 'medium' : 'far';
+  const dateStr = neo.dateObj.toUTCString().replace('GMT', 'UTC');
+  const diamStr = `${neo.diamMin.toFixed(0)}–${neo.diamMax.toFixed(0)} m`;
+
+  return `
+  <div class="neo-card ${neo.hazardous ? 'hazardous' : 'safe'}">
+    <div class="neo-card-main">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span class="neo-name">${neo.name}</span>
+        <span class="badge ${neo.hazardous ? 'badge-hazardous' : 'badge-safe'}">
+          ${neo.hazardous ? '⚠ HAZARDOUS' : '✓ SAFE'}
+        </span>
+      </div>
+      <div class="neo-meta">
+        <div class="neo-meta-item">
+          <span class="neo-meta-label">Approach Date (UTC)</span>
+          <span class="neo-meta-value" style="font-size:11px;">${dateStr}</span>
+        </div>
+        <div class="neo-meta-item">
+          <span class="neo-meta-label">Miss Distance</span>
+          <span class="neo-meta-value">${neo.missLD.toFixed(2)} LD</span>
+        </div>
+        <div class="neo-meta-item">
+          <span class="neo-meta-label">Miss (km)</span>
+          <span class="neo-meta-value">${(neo.missKm/1e6).toFixed(2)}M km</span>
+        </div>
+        <div class="neo-meta-item">
+          <span class="neo-meta-label">Velocity</span>
+          <span class="neo-meta-value">${neo.velocityKms.toFixed(2)} km/s</span>
+        </div>
+        <div class="neo-meta-item">
+          <span class="neo-meta-label">Diameter</span>
+          <span class="neo-meta-value">${diamStr}</span>
+        </div>
+      </div>
+      <div class="proximity-bar-container">
+        <div class="proximity-bar-label">
+          <span>Miss Distance (max ${maxLD.toFixed(0)} LD shown)</span>
+          <span>${neo.missLD.toFixed(2)} LD</span>
+        </div>
+        <div class="proximity-bar-track">
+          <div class="proximity-bar-fill ${barClass}" id="bar-fill-${displayIdx}" style="width:0%"></div>
+          <div class="moon-marker" style="left:${moonPct}%">
+            <div class="moon-label">🌙 1LD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Sort & Filter buttons
+document.querySelectorAll('#sort-btns .btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sort-btns .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.sortBy = btn.dataset.sort;
+    if (state.neoList.length > 0) renderNeoList();
+  });
+});
+
+document.querySelectorAll('#filter-btns .btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#filter-btns .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.filterBy = btn.dataset.filter;
+    if (state.neoList.length > 0) renderNeoList();
+  });
+});
+
+// ============================================================
+// TAB 2: SIZE & SPEED CONTEXT
+// ============================================================
+function populateContextDropdown() {
+  const sel = document.getElementById('context-object-select');
+  const sorted = [...state.neoList].sort((a, b) => a.dateObj - b.dateObj);
+  sel.innerHTML = sorted.map((n, i) => `<option value="${i}">${n.name} (${n.dateObj.toLocaleDateString()})</option>`).join('');
+  sel.addEventListener('change', () => {
+    state.selectedContextNeo = sorted[parseInt(sel.value)];
+    renderContextTab();
+  });
+  state.selectedContextNeo = sorted[0];
+  if (state.activeTab === 'tab-context') renderContextTab();
+}
+
+function renderContextTab() {
+  const neo = state.selectedContextNeo || state.neoList[0];
+  if (!neo) return;
+  renderSizeComparison(neo);
+  renderSpeedComparison(neo);
+}
+
+const SIZE_REFS = [
+  { label: 'Car', size: 4 },
+  { label: 'House', size: 15 },
+  { label: 'Football Field', size: 100 },
+  { label: 'Eiffel Tower', size: 300 },
+  { label: 'City Block', size: 500 },
+  { label: '1 km landmark', size: 1000 },
+];
+
+function renderSizeComparison(neo) {
+  const area = document.getElementById('size-comparison-area');
+  const diam = neo.diamAvg;
+  const allSizes = [...SIZE_REFS.map(r => r.size), diam];
+  const maxSize = Math.max(...allSizes);
+
+  const svgW = 400;
+  const maxR = 60;
+  const items = [...SIZE_REFS, { label: neo.name, size: diam, isNeo: true }];
+
+  // lay out circles left to right
+  let cx = 20;
+  const circles = items.map(item => {
+    const r = Math.max(4, (item.size / maxSize) * maxR);
+    const x = cx + r;
+    cx += r * 2 + 16;
+    return { ...item, r, cx: x };
+  });
+
+  const svgH = maxR * 2 + 60;
+
+  area.innerHTML = `
+    <div style="overflow-x:auto;">
+    <svg width="${Math.max(cx, svgW)}" height="${svgH}" class="size-comparison-svg">
+      ${circles.map(c => `
+        <circle cx="${c.cx}" cy="${maxR + 10}" r="${c.r}"
+          fill="${c.isNeo ? 'rgba(255,77,77,0.3)' : 'rgba(0,212,255,0.15)'}"
+          stroke="${c.isNeo ? 'var(--accent-red)' : 'var(--accent-cyan)'}"
+          stroke-width="1.5" />
+        <text x="${c.cx}" y="${maxR + 10 + c.r + 16}"
+          text-anchor="middle" font-family="Space Mono,monospace" font-size="8"
+          fill="${c.isNeo ? 'var(--accent-red)' : 'var(--text-muted)'}">
+          ${c.label}
+        </text>
+        <text x="${c.cx}" y="${maxR + 10 + c.r + 26}"
+          text-anchor="middle" font-family="Space Mono,monospace" font-size="7"
+          fill="var(--text-muted)">${c.size >= 1000 ? (c.size/1000).toFixed(1)+'km' : c.size.toFixed(0)+'m'}</text>
+      `).join('')}
+    </svg>
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:12px;font-family:'Space Mono',monospace;">
+      ${neo.name} estimated diameter: <strong style="color:var(--accent-red)">${neo.diamMin.toFixed(0)}–${neo.diamMax.toFixed(0)} m</strong>
+    </p>`;
+}
+
+const SPEED_REFS = [
+  { label: 'Speed of Sound', speed: 0.34, color: '#6b8fad' },
+  { label: 'Jet Aircraft', speed: 0.3, color: '#6b8fad' },
+  { label: 'Bullet', speed: 1.0, color: '#6b8fad' },
+  { label: 'ISS', speed: 7.7, color: '#00d4ff' },
+];
+
+function renderSpeedComparison(neo) {
+  const area = document.getElementById('speed-comparison-area');
+  const neoSpeed = neo.velocityKms;
+  const maxSpeed = Math.max(...SPEED_REFS.map(r => r.speed), neoSpeed);
+  const items = [...SPEED_REFS, { label: neo.name, speed: neoSpeed, color: 'var(--accent-amber)', isNeo: true }];
+
+  area.innerHTML = items.map(item => {
+    const pct = (item.speed / maxSpeed * 100).toFixed(1);
+    return `
+      <div class="speed-track">
+        <div class="speed-track-label">${item.label}</div>
+        <div class="speed-track-bar-container">
+          <div class="speed-track-bar" style="width:0%; background:${item.color}; ${item.isNeo ? 'box-shadow:0 0 8px '+item.color : ''}"
+            data-target="${pct}"></div>
+        </div>
+        <div class="speed-track-value">${item.speed.toFixed(2)} km/s</div>
+      </div>`;
+  }).join('');
+
+  // Animate bars
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.speed-track-bar').forEach(bar => {
+      bar.style.width = bar.dataset.target + '%';
+    });
+  });
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    if (item.dataset.tab === 'tab-context' && state.neoList.length > 0) {
+      renderContextTab();
+    }
+  });
+});
+
+// ============================================================
+// TAB 3: CLOSE APPROACH SCHEDULE — SBDB
+// ============================================================
+(function initScheduleDates() {
+  const now = new Date();
+  const from = new Date(now);
+  from.setDate(from.getDate() - 30);
+  const to = new Date(now);
+  to.setDate(to.getDate() + 90);
+  document.getElementById('sch-date-from').value = getDateStr(from);
+  document.getElementById('sch-date-to').value = getDateStr(to);
+})();
+
+document.getElementById('sch-dist-slider').addEventListener('input', function() {
+  document.getElementById('sch-dist-val').textContent = this.value;
+});
+
+document.getElementById('sch-fetch-btn').addEventListener('click', fetchScheduleData);
+
+async function fetchScheduleData() {
+  const container = document.getElementById('schedule-table-container');
+  container.innerHTML = `<div class="loading-state"><div class="scan-animation"></div><div class="loading-text">Querying close approach database...</div></div>`;
+  document.getElementById('timeline-svg').innerHTML = '';
+
+  const dateFrom = document.getElementById('sch-date-from').value;
+  const dateTo = document.getElementById('sch-date-to').value;
+  const distMax = document.getElementById('sch-dist-slider').value;
+  const minDiam = document.getElementById('sch-min-diam').value || 0;
+
+  const url = `https://ssd-api.jpl.nasa.gov/cad.api?dist-max=${distMax}LD&date-min=${dateFrom}&date-max=${dateTo}&sort=date&fullname=true`;
+
+  try {
+    const data = await fetchJSON(url);
+    state.scheduleData = data;
+    renderScheduleTable(data);
+    renderTimeline(data);
+  } catch (err) {
+    container.innerHTML = `<div class="error-state">
+      <div class="error-icon">⚠</div>
+      <div class="error-msg">Failed to fetch schedule data: ${err.message}</div>
+      <button class="retry-btn" onclick="fetchScheduleData()">↻ Retry</button>
+    </div>`;
+  }
+}
+
+let schedSortCol = 0;
+let schedSortAsc = true;
+
+function renderScheduleTable(data) {
+  const container = document.getElementById('schedule-table-container');
+  if (!data.data || data.data.length === 0) {
+    container.innerHTML = `<div class="error-state"><div class="error-icon">🔭</div><div class="error-msg">No close approaches found for this range/filters.</div></div>`;
+    return;
+  }
+
+  const fields = data.fields;
+  // fields: des, orbit_id, jd, cd (date), dist (AU), dist_min, dist_max, v_rel, v_inf, t_sigma_f, body, h, diameter, diameter_sigma, fullname
+  const rows = data.data;
+
+  // Convert AU dist to LD
+  const getLD = row => parseFloat(row[4]) * AU_TO_LD;
+  const getKm = row => parseFloat(row[4]) * AU_TO_KM;
+  const getVel = row => parseFloat(row[7]) || 0;
+  const getDiam = row => row[12] ? parseFloat(row[12]) * 1000 : null; // km to m
+  const getName = row => row[14] || row[0];
+  const getDate = row => row[3];
+
+  const sorted = [...rows];
+  function doSort() {
+    sorted.sort((a, b) => {
+      let va, vb;
+      if (schedSortCol === 0) { va = getDate(a); vb = getDate(b); }
+      else if (schedSortCol === 1) { va = getLD(a); vb = getLD(b); }
+      else if (schedSortCol === 2) { va = getVel(a); vb = getVel(b); }
+      else if (schedSortCol === 3) { va = getDiam(a) || 0; vb = getDiam(b) || 0; }
+      return schedSortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+    });
+  }
+  doSort();
+
+  const headers = [
+    { label: 'Object', col: -1 },
+    { label: 'Date (UTC)', col: 0 },
+    { label: 'Miss Dist (LD)', col: 1 },
+    { label: 'Miss Dist (km)', col: -1 },
+    { label: 'Velocity (km/s)', col: 2 },
+    { label: 'Diameter (m)', col: 3 },
+    { label: 'Orbit Class', col: -1 },
+  ];
+
+  function buildTable() {
+    const headerHtml = headers.map((h, i) =>
+      `<th data-col="${h.col}" class="${schedSortCol === h.col && h.col >= 0 ? 'sorted' : ''}" style="${h.col < 0 ? 'cursor:default' : ''}">
+        ${h.label}${schedSortCol === h.col && h.col >= 0 ? (schedSortAsc ? ' ▲' : ' ▼') : ''}
+      </th>`
+    ).join('');
+
+    const rowHtml = sorted.slice(0, 500).map(row => {
+      const ld = getLD(row);
+      const color = ld < 1 ? 'var(--accent-red)' : ld < 5 ? 'var(--accent-amber)' : 'var(--accent-green)';
+      const diam = getDiam(row);
+      return `<tr>
+        <td>${getName(row)}</td>
+        <td>${getDate(row)}</td>
+        <td><span class="dist-dot" style="background:${color}"></span>${ld.toFixed(3)}</td>
+        <td>${(getKm(row)/1e6).toFixed(2)}M</td>
+        <td>${getVel(row).toFixed(2)}</td>
+        <td>${diam ? diam.toFixed(0) + ' m' : '—'}</td>
+        <td>${row[10] || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="section-header">
+        <span class="section-title">Close Approach Schedule</span>
+        <span class="result-count">${rows.length} results (showing up to 500)</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="sch-table">
+          <thead><tr>${headerHtml}</tr></thead>
+          <tbody>${rowHtml}</tbody>
+        </table>
+      </div>`;
+  }
+
+  container.innerHTML = buildTable();
+
+  container.querySelectorAll('th[data-col]').forEach(th => {
+    if (parseInt(th.dataset.col) < 0) return;
+    th.addEventListener('click', () => {
+      const col = parseInt(th.dataset.col);
+      if (schedSortCol === col) schedSortAsc = !schedSortAsc;
+      else { schedSortCol = col; schedSortAsc = true; }
+      doSort();
+      container.innerHTML = buildTable();
+      // Re-attach
+      container.querySelectorAll('th[data-col]').forEach(th2 => {
+        if (parseInt(th2.dataset.col) < 0) return;
+        th2.addEventListener('click', arguments.callee);
+      });
+    });
+  });
+}
+
+function renderTimeline(data) {
+  const svg = document.getElementById('timeline-svg');
+  if (!data.data || data.data.length === 0) return;
+
+  const container = document.getElementById('timeline-container');
+  const W = Math.max(container.clientWidth - 40, 600);
+  const H = 60;
+
+  const dates = data.data.map(r => new Date(r[3]));
+  const minDate = new Date(Math.min(...dates));
+  const maxDate = new Date(Math.max(...dates));
+  const range = maxDate - minDate || 1;
+
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+
+  // Axis line
+  let html = `<line x1="20" y1="30" x2="${W-20}" y2="30" stroke="rgba(107,143,173,0.3)" stroke-width="1"/>`;
+
+  // Today marker
+  const now = new Date();
+  if (now >= minDate && now <= maxDate) {
+    const todayX = 20 + ((now - minDate) / range) * (W - 40);
+    html += `<line x1="${todayX}" y1="10" x2="${todayX}" y2="50" stroke="var(--accent-cyan)" stroke-width="1" stroke-dasharray="3,3"/>
+             <text x="${todayX}" y="8" text-anchor="middle" font-family="Space Mono,monospace" font-size="7" fill="var(--accent-cyan)">TODAY</text>`;
+  }
+
+  data.data.forEach(row => {
+    const d = new Date(row[3]);
+    const x = 20 + ((d - minDate) / range) * (W - 40);
+    const ld = parseFloat(row[4]) * AU_TO_LD;
+    const color = ld < 1 ? 'var(--accent-red)' : ld < 5 ? 'var(--accent-amber)' : 'var(--accent-green)';
+    const name = (row[14] || row[0]).substring(0, 20);
+    html += `<circle cx="${x}" cy="30" r="4" fill="${color}" opacity="0.8" stroke="rgba(0,0,0,0.3)" stroke-width="0.5">
+      <title>${name} — ${ld.toFixed(2)} LD on ${row[3]}</title>
+    </circle>`;
+  });
+
+  // Date labels
+  html += `<text x="20" y="${H-4}" font-family="Space Mono,monospace" font-size="8" fill="var(--text-muted)">${minDate.toLocaleDateString()}</text>
+           <text x="${W-20}" y="${H-4}" text-anchor="end" font-family="Space Mono,monospace" font-size="8" fill="var(--text-muted)">${maxDate.toLocaleDateString()}</text>`;
+
+  svg.innerHTML = html;
+}
+
+// ============================================================
+// TAB 4: SENTRY — Impact Risk
+// ============================================================
+async function fetchSentryData() {
+  const container = document.getElementById('sentry-table-container');
+  container.innerHTML = `<div class="loading-state"><div class="scan-animation"></div><div class="loading-text">Loading Sentry watch list...</div></div>`;
+
+  try {
+    const data = await fetchJSON('https://ssd-api.jpl.nasa.gov/sentry.api');
+    state.sentryData = data;
+    renderSentryTable(data);
+    renderSentryStats(data);
+  } catch (err) {
+    container.innerHTML = `<div class="error-state">
+      <div class="error-icon">⚠</div>
+      <div class="error-msg">Failed to load Sentry data: ${err.message}</div>
+      <button class="retry-btn" onclick="fetchSentryData()">↻ Retry</button>
+    </div>`;
+  }
+}
+
+function renderSentryStats(data) {
+  if (!data.data || data.data.length === 0) return;
+  const objs = data.data;
+  document.getElementById('sentry-count').textContent = data.count || objs.length;
+
+  const maxTorino = objs.reduce((a, b) => (parseFloat(b.ts_max) > parseFloat(a.ts_max) ? b : a));
+  document.getElementById('sentry-torino').textContent = maxTorino.ts_max || '0';
+  document.getElementById('sentry-torino-name').textContent = maxTorino.fullname || maxTorino.des || '—';
+
+  // Nearest impact year
+  const withYear = objs.filter(o => o.range && o.range.includes('-'));
+  const nearest = withYear.reduce((a, b) => {
+    const ya = parseInt(a.range?.split('-')[0]) || 9999;
+    const yb = parseInt(b.range?.split('-')[0]) || 9999;
+    return ya < yb ? a : b;
+  }, withYear[0] || objs[0]);
+
+  if (nearest) {
+    document.getElementById('sentry-nearest').textContent = nearest.range?.split('-')[0] || '—';
+    document.getElementById('sentry-nearest-name').textContent = nearest.fullname || nearest.des || '—';
+  }
+}
+
+let sentrySortCol = 'ps_max';
+let sentrySortAsc = true;
+
+function renderSentryTable(data) {
+  const container = document.getElementById('sentry-table-container');
+  if (!data.data || data.data.length === 0) {
+    container.innerHTML = `<div class="error-state"><div class="error-icon">🔭</div><div class="error-msg">No objects on watch list.</div></div>`;
+    return;
+  }
+
+  const objs = [...data.data];
+
+  function doSort() {
+    objs.sort((a, b) => {
+      const va = parseFloat(a[sentrySortCol]) || 0;
+      const vb = parseFloat(b[sentrySortCol]) || 0;
+      return sentrySortAsc ? vb - va : va - vb;
+    });
+  }
+  doSort();
+
+  const headers = [
+    { label: 'Object', key: null },
+    { label: 'Palermo Scale ⓘ', key: 'ps_max' },
+    { label: 'Torino Scale', key: 'ts_max' },
+    { label: 'Impact Prob. (%)', key: 'ip' },
+    { label: 'Diameter (km)', key: 'diameter' },
+    { label: 'Impact Year(s)', key: null },
+    { label: 'Solutions', key: 'n_imp' },
+  ];
+
+  function torinoColor(t) {
+    t = parseInt(t) || 0;
+    if (t === 0) return '#6b8fad';
+    if (t <= 3) return '#ffab40';
+    if (t <= 7) return '#ff8c00';
+    return '#ff4d4d';
+  }
+
+  function buildTable() {
+    const headerHtml = headers.map(h =>
+      `<th ${h.key ? `data-key="${h.key}"` : ''} class="${sentrySortCol === h.key && h.key ? 'sorted' : ''}" style="${!h.key ? 'cursor:default' : ''}">
+        ${h.label}${sentrySortCol === h.key && h.key ? (sentrySortAsc ? ' ▼' : ' ▲') : ''}
+      </th>`
+    ).join('');
+
+    const rowHtml = objs.map((o, i) => {
+      const ps = parseFloat(o.ps_max) || 0;
+      const ts = parseInt(o.ts_max) || 0;
+      const ip = (parseFloat(o.ip) * 100).toExponential(2);
+      const diam = parseFloat(o.diameter) || 0;
+      const name = o.fullname || o.des || '—';
+      const tc = torinoColor(ts);
+
+      return `
+        <tr class="sentry-row" data-idx="${i}">
+          <td><span class="expand-arrow" id="arrow-${i}">▶</span>${name}</td>
+          <td style="color:${ps > -2 ? 'var(--accent-amber)' : 'var(--text-primary)'}">${ps.toFixed(2)}</td>
+          <td style="color:${tc}; font-weight:700;">${ts}</td>
+          <td>${ip}%</td>
+          <td>${diam ? diam.toFixed(3) : '—'}</td>
+          <td>${o.range || '—'}</td>
+          <td>${o.n_imp || '—'}</td>
+        </tr>
+        <tr class="expandable-row" id="expand-${i}">
+          <td colspan="7">
+            <div class="expand-content" id="expand-content-${i}">
+              <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; font-family:'Space Mono',monospace; font-size:11px;">
+                <div><span style="color:var(--text-muted)">Designation:</span> ${o.des || '—'}</div>
+                <div><span style="color:var(--text-muted)">Velocity (km/s):</span> ${o.v_inf ? (parseFloat(o.v_inf)).toFixed(2) : '—'}</div>
+                <div><span style="color:var(--text-muted)">Impact Solutions:</span> ${o.n_imp || '—'}</div>
+                <div><span style="color:var(--text-muted)">Palermo Scale:</span> ${o.ps_max}</div>
+                <div><span style="color:var(--text-muted)">Torino Scale:</span> ${o.ts_max}</div>
+              </div>
+              <div style="margin-top:12px;">
+                <a href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=${encodeURIComponent(o.des)}"
+                   target="_blank" rel="noopener"
+                   style="color:var(--accent-cyan); font-family:'Space Mono',monospace; font-size:11px; text-decoration:none;">
+                   🔗 View in JPL Orbit Viewer →
+                </a>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    return `
+      <div class="section-header">
+        <span class="section-title">Sentry Watch List</span>
+        <span class="result-count">${objs.length} objects</span>
+      </div>
+      <div id="palermo-explainer" class="col-explainer">
+        <strong>Palermo Scale:</strong> Compares impact probability to background rate. Values near 0 or above are more concerning.
+        Values below −2 are considered routine. This scale is logarithmic.
+      </div>
+      <div style="overflow-x:auto; max-height:500px; overflow-y:auto;">
+        <table class="data-table" id="sentry-tbl">
+          <thead><tr>${headerHtml}</tr></thead>
+          <tbody>${rowHtml}</tbody>
+        </table>
+      </div>`;
+  }
+
+  container.innerHTML = buildTable();
+
+  // Palermo explainer toggle
+  container.querySelector('th[data-key="ps_max"]')?.addEventListener('click', function() {
+    const ex = document.getElementById('palermo-explainer');
+    ex?.classList.toggle('visible');
+  });
+
+  // Sort headers
+  container.querySelectorAll('th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (!key || key === 'ps_max') return;
+      if (sentrySortCol === key) sentrySortAsc = !sentrySortAsc;
+      else { sentrySortCol = key; sentrySortAsc = true; }
+      doSort();
+      container.innerHTML = buildTable();
+      attachSentryEvents();
+    });
+  });
+
+  attachSentryEvents();
+}
+
+function attachSentryEvents() {
+  document.querySelectorAll('.sentry-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const i = row.dataset.idx;
+      const content = document.getElementById(`expand-content-${i}`);
+      const arrow = document.getElementById(`arrow-${i}`);
+      if (content) {
+        content.classList.toggle('open');
+        arrow?.classList.toggle('open');
+      }
+    });
+  });
+}
+
+// Torino legend
+const TORINO_SCALE = [
+  { range: '0', label: 'No Hazard', desc: 'Likelihood of collision is zero or effectively zero.', color: '#6b8fad' },
+  { range: '1', label: 'Normal', desc: 'Routine discovery — pass close enough to merit attention.', color: '#39ff8e' },
+  { range: '2-3', label: 'Meriting Attention', desc: 'Somewhat close encounter, but no unusual danger.', color: '#ffab40' },
+  { range: '4', label: 'Meriting Attention', desc: 'Close encounter with 1% or more chance of collision.', color: '#ffab40' },
+  { range: '5-6', label: 'Threatening', desc: 'Significant threat of collision capable of regional devastation.', color: '#ff8c00' },
+  { range: '7', label: 'Threatening', desc: 'Extremely close encounter with high chance of collision.', color: '#ff6600' },
+  { range: '8', label: 'Certain Collision', desc: 'Certain collision causing localized destruction.', color: '#ff4d4d' },
+  { range: '9', label: 'Certain Collision', desc: 'Certain collision — regional to global catastrophe.', color: '#cc0000' },
+  { range: '10', label: 'Certain Collision', desc: 'Certain global catastrophic collision.', color: '#990000' },
+];
+
+document.getElementById('torino-legend').innerHTML = TORINO_SCALE.map(t => `
+  <div class="torino-item">
+    <div class="torino-dot" style="background:${t.color}; box-shadow:0 0 4px ${t.color}"></div>
+    <div>
+      <div style="font-family:'Space Mono',monospace; font-size:10px; color:var(--text-primary);">Level ${t.range}: ${t.label}</div>
+      <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${t.desc}</div>
+    </div>
+  </div>
+`).join('');
+
+// ============================================================
+// TAB 5: 3D GLOBE
+// ============================================================
+function initGlobe() {
+  if (state.neoList.length === 0) return;
+  const el = document.getElementById('globe-el');
+  el.innerHTML = '';
+
+  const globe = Globe()(el);
+  state.globeInstance = globe;
+
+  globe
+    .backgroundColor('rgba(5,10,20,0)')
+    .showAtmosphere(true)
+    .atmosphereColor('#1a4a7a')
+    .atmosphereAltitude(0.15)
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg');
+
+  // Prepare asteroid points
+  const EARTH_RADIUS_PX = 1; // globe uses normalized units
+  const MOON_DISTANCE_GLOBE_UNITS = 60; // 1 LD = 60 Earth radii
+
+  const asteroidPoints = state.neoList.map(neo => ({
+    lat: (Math.random() - 0.5) * 180,
+    lng: (Math.random() - 0.5) * 360,
+    altitude: Math.min(neo.missLD / MOON_DISTANCE_GLOBE_UNITS * 2, 0.9),
+    color: neo.missLD < 1 ? '#ff4d4d' : neo.missLD < 5 ? '#ffab40' : '#39ff8e',
+    radius: Math.max(0.3, Math.min(neo.diamAvg / 500, 1.5)),
+    name: neo.name,
+    missLD: neo.missLD,
+    missKm: neo.missKm,
+    velocityKms: neo.velocityKms,
+    diamAvg: neo.diamAvg,
+    date: neo.date,
+    hazardous: neo.hazardous,
+    isMoon: false,
+    label: state.showLabels ? neo.name.substring(0, 15) : '',
+  }));
+
+  const moonPoint = {
+    lat: 0, lng: 90,
+    altitude: 1 / MOON_DISTANCE_GLOBE_UNITS * 2,
+    color: '#ffffff',
+    radius: 0.8,
+    name: 'Moon',
+    isMoon: true,
+    label: '🌙 Moon (1 LD)',
+  };
+
+  function getPoints() {
+    const pts = [...asteroidPoints];
+    if (state.showMoon) pts.push(moonPoint);
+    return pts;
+  }
+
+  globe
+    .pointsData(getPoints())
+    .pointAltitude('altitude')
+    .pointColor('color')
+    .pointRadius('radius')
+    .pointLabel(d => d.isMoon ? '🌙 Moon (1 LD)' : `
+      <div style="background:rgba(13,27,42,0.9);border:1px solid rgba(0,212,255,0.3);border-radius:6px;padding:8px 12px;font-family:Space Mono,monospace;font-size:10px;">
+        <div style="color:#e8f4fd;font-weight:700;margin-bottom:4px;">${d.name}</div>
+        <div style="color:#6b8fad;">Miss: ${d.missLD?.toFixed(2)} LD</div>
+        <div style="color:#6b8fad;">Speed: ${d.velocityKms?.toFixed(1)} km/s</div>
+        <div style="color:#6b8fad;">Size: ${d.diamAvg?.toFixed(0)} m avg</div>
+      </div>
+    `)
+    .onPointClick(d => {
+      if (d.isMoon) return;
+      const panel = document.getElementById('globe-detail');
+      panel.classList.add('visible');
+      panel.innerHTML = `
+        <div class="card-title" style="margin-bottom:12px;">${d.name}</div>
+        <div style="font-family:'Space Mono',monospace; font-size:11px; display:flex; flex-direction:column; gap:10px;">
+          <div style="padding:12px; background:var(--surface-2); border-radius:8px; border-left:3px solid ${d.color};">
+            <span style="color:var(--text-muted);">Miss Distance</span>
+            <div style="font-size:18px; font-weight:700; margin-top:4px; color:${d.color}">${d.missLD?.toFixed(3)} LD</div>
+            <div style="color:var(--text-muted); font-size:10px;">${(d.missKm/1e6).toFixed(2)}M km</div>
+          </div>
+          <div><span style="color:var(--text-muted);">Approach Date:</span><br><span>${d.date}</span></div>
+          <div><span style="color:var(--text-muted);">Velocity:</span><br><span>${d.velocityKms?.toFixed(2)} km/s</span></div>
+          <div><span style="color:var(--text-muted);">Est. Diameter:</span><br><span>${d.diamAvg?.toFixed(0)} m (avg)</span></div>
+          <div><span style="color:var(--text-muted);">Hazard Status:</span><br>
+            <span class="badge ${d.hazardous ? 'badge-hazardous' : 'badge-safe'}" style="margin-top:4px;display:inline-flex;">
+              ${d.hazardous ? '⚠ HAZARDOUS' : '✓ SAFE'}
+            </span>
+          </div>
+          <p style="color:var(--text-muted); font-size:9px; margin-top:8px; line-height:1.6;">
+            ${d.name} will pass at ${d.missLD?.toFixed(2)} lunar distances — approximately ${(d.missKm/1e6).toFixed(2)}M km from Earth.
+          </p>
+        </div>
+        <button onclick="document.getElementById('globe-detail').classList.remove('visible')"
+          style="margin-top:16px; width:100%; background:none; border:1px solid var(--border); color:var(--text-muted); padding:8px; border-radius:6px; cursor:pointer; font-family:'Space Mono',monospace; font-size:10px;">
+          ✕ Close
+        </button>`;
+    });
+
+  // Globe controls
+  document.getElementById('toggle-moon').addEventListener('click', function() {
+    state.showMoon = !state.showMoon;
+    this.classList.toggle('active', state.showMoon);
+    globe.pointsData(getPoints());
+  });
+
+  document.getElementById('toggle-labels').addEventListener('click', function() {
+    state.showLabels = !state.showLabels;
+    this.classList.toggle('active', state.showLabels);
+    asteroidPoints.forEach(p => { p.label = state.showLabels ? p.name.substring(0, 15) : ''; });
+    globe.pointsData(getPoints());
+  });
+
+  document.getElementById('reset-camera').addEventListener('click', () => {
+    globe.pointOfView({ lat: 0, lng: 0, altitude: 2.5 }, 1000);
+  });
+
+  globe.pointOfView({ lat: 20, lng: 20, altitude: 2.5 });
+}
+
+// ============================================================
+// INITIAL LOAD
+// ============================================================
+function init() {
+  updateKeyStatus();
+  fetchWeekData();
+
+  // Load schedule and sentry when their tabs are first visited
+  document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (item.dataset.tab === 'tab-schedule' && !state.scheduleData) {
+        fetchScheduleData();
+      }
+      if (item.dataset.tab === 'tab-sentry' && !state.sentryData) {
+        fetchSentryData();
+      }
+    });
+  });
+}
+
+init();
+</script>
+</body>
+</html>
