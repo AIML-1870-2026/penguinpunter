@@ -1263,7 +1263,7 @@ const LD_TO_KM = 384400;
 const AU_TO_LD = AU_TO_KM / LD_TO_KM; // ~389.17
 
 let state = {
-  apiKey: localStorage.getItem('neo_api_key') || 'DEMO_KEY',
+  apiKey: localStorage.getItem('neo_api_key') || 'AuaoAVPtW7j8GROrlsKbowlG58sbd8D6DFhWWMUK',
   neoData: null,
   neoList: [],
   sortBy: 'date',
@@ -1391,6 +1391,9 @@ function updateKeyStatus() {
   if (state.apiKey === 'DEMO_KEY') {
     el.className = 'key-status demo';
     el.textContent = 'Using DEMO_KEY (rate-limited: 30 req/hour)';
+  } else if (state.apiKey === 'AuaoAVPtW7j8GROrlsKbowlG58sbd8D6DFhWWMUK') {
+    el.className = 'key-status personal';
+    el.textContent = '✓ Default key active (1,000 req/day)';
   } else {
     el.className = 'key-status personal';
     el.textContent = '✓ Personal key active';
