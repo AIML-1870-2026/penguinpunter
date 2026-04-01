@@ -1436,8 +1436,14 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
 // ============================================================
 // API HELPERS
 // ============================================================
+const CORS_PROXY = 'https://corsproxy.io/?';
+
 async function fetchJSON(url) {
-  const resp = await fetch(url);
+  // JPL APIs don't send CORS headers — route through proxy
+  const finalUrl = url.includes('ssd-api.jpl.nasa.gov')
+    ? CORS_PROXY + encodeURIComponent(url)
+    : url;
+  const resp = await fetch(finalUrl);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return resp.json();
 }
