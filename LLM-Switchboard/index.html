@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐍 LLM Switchboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0f0a;
+    --bg2: #0f1a0f;
+    --bg3: #121e12;
+    --card: #111811;
+    --green: #39ff14;
+    --green2: #4caf50;
+    --green3: #2d8b2d;
+    --sage: #6b8f71;
+    --text: #e8f5e9;
+    --text2: #a5d6a7;
+    --red: #ff4444;
+    --red2: #1a0a0a;
+    --yellow: #ffcc00;
+    --blue: #4fc3f7;
+    --border: rgba(57,255,20,0.25);
+    --glow: 0 0 8px #39ff14;
+    --glow2: 0 0 16px rgba(57,255,20,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(57,255,20,0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(76,175,80,0.03) 0%, transparent 50%),
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(57,255,20,0.015) 10px,
+        rgba(57,255,20,0.015) 11px
+      );
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--green);
+    text-shadow: var(--glow);
+    letter-spacing: 2px;
+    font-family: 'Fira Code', monospace;
+  }
+  .logo span { color: var(--text2); font-size: 0.9rem; display: block; font-weight: 400; letter-spacing: 1px; }
+
+  /* SECTIONS */
+  .section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--glow2);
+  }
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* BUTTONS */
+  button {
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #39ff14, #2d8b2d);
+    color: #000;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .btn-primary:hover { background: linear-gradient(135deg, #4cff2a, #39b839); box-shadow: var(--glow); }
+  .btn-primary:disabled { background: #1a2e1a; color: #4a6b4a; cursor: not-allowed; box-shadow: none; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--green2);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 8px;
+  }
+  .btn-secondary:hover { border-color: var(--green); color: var(--green); background: rgba(57,255,20,0.05); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid rgba(255,68,68,0.3);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+  }
+  .btn-danger:hover { background: rgba(255,68,68,0.1); border-color: var(--red); }
+
+  /* TOGGLE PILLS */
+  .pill-group { display: flex; gap: 4px; }
+  .pill {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pill.active {
+    background: linear-gradient(135deg, rgba(57,255,20,0.2), rgba(76,175,80,0.15));
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 0 6px rgba(57,255,20,0.3);
+  }
+  .pill:hover:not(.active) { border-color: var(--green2); color: var(--text); }
+
+  /* INPUTS */
+  input[type=text], input[type=password], textarea, select {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.85rem;
+    padding: 10px 12px;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 2px rgba(57,255,20,0.1);
+  }
+  textarea { resize: vertical; font-family: 'Fira Code', monospace; min-height: 100px; line-height: 1.5; }
+  select { cursor: pointer; }
+  select option { background: var(--bg2); }
+
+  /* API KEY SECTION */
+  .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .key-grid { grid-template-columns: 1fr; } }
+
+  .key-field { position: relative; }
+  .key-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--text2);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .key-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(57,255,20,0.3);
+    color: var(--green);
+    background: rgba(57,255,20,0.08);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .key-indicator.loaded { opacity: 1; }
+
+  .upload-area {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.82rem;
+    color: var(--sage);
+    margin-bottom: 12px;
+  }
+  .upload-area:hover { border-color: var(--green2); color: var(--text2); background: rgba(57,255,20,0.03); }
+  .upload-area input { display: none; }
+
+  .privacy-notice {
+    font-size: 0.75rem;
+    color: var(--sage);
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(57,255,20,0.04);
+    border-radius: 6px;
+    border-left: 2px solid var(--green3);
+  }
+
+  /* PROVIDER SELECT */
+  .provider-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .model-row { display: flex; gap: 12px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+
+  /* CORS BANNER */
+  .cors-banner {
+    display: none;
+    background: rgba(255,204,0,0.07);
+    border: 1px solid rgba(255,204,0,0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    font-size: 0.82rem;
+    color: var(--yellow);
+    line-height: 1.5;
+  }
+  .cors-banner.show { display: flex; gap: 10px; align-items: flex-start; }
+
+  /* COMPARE MODE */
+  .compare-cols {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .compare-cols.show { display: grid; }
+  @media (max-width: 760px) { .compare-cols { grid-template-columns: 1fr; } }
+  .compare-label {
+    font-size: 0.75rem;
+    color: var(--green2);
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* PROMPT SECTION */
+  .prompt-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .char-count { font-size: 0.75rem; color: var(--sage); font-family: 'Fira Code', monospace; }
+  .schema-section { margin-top: 12px; }
+  .schema-label { font-size: 0.78rem; color: var(--text2); margin-bottom: 6px; }
+
+  /* SEND ROW */
+  .send-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .send-btn-big {
+    background: linear-gradient(135deg, #39ff14, #2d8b2d);
+    color: #000;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .send-btn-big:hover { box-shadow: var(--glow), 0 4px 16px rgba(57,255,20,0.2); transform: translateY(-1px); }
+  .send-btn-big:disabled { background: #1a2e1a; color: #4a6b4a; cursor: not-allowed; transform: none; box-shadow: none; }
+  .loading-spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(57,255,20,0.2);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* OUTPUT */
+  .output-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.83rem;
+    line-height: 1.7;
+    min-height: 120px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 500px;
+    overflow-y: auto;
+    color: var(--text);
+  }
+  .output-panel.empty { color: var(--sage); font-style: italic; font-family: 'Inter', sans-serif; }
+
+  .output-panel pre { margin: 0; background: transparent; }
+  .output-panel code { font-family: 'Fira Code', monospace; font-size: 0.83rem; }
+
+  /* METRICS BAR */
+  .metrics-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .metrics-bar.show { display: flex; }
+  .metric-chip {
+    font-size: 0.75rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--green2);
+    background: rgba(57,255,20,0.07);
+    border: 1px solid rgba(57,255,20,0.2);
+    padding: 3px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+
+  /* ERROR PANEL */
+  .error-panel {
+    display: none;
+    background: var(--red2);
+    border: 1px solid rgba(255,68,68,0.4);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.85rem;
+    color: #ff8888;
+    line-height: 1.5;
+    margin-top: 10px;
+  }
+  .error-panel.show { display: flex; gap: 10px; align-items: flex-start; }
+
+  /* SCHEMA REPORT CARD */
+  .report-card {
+    display: none;
+    margin-top: 14px;
+  }
+  .report-card.show { display: block; }
+  .report-title {
+    font-size: 0.75rem;
+    color: var(--green);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  .report-table th {
+    text-align: left;
+    padding: 6px 10px;
+    color: var(--sage);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .report-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(57,255,20,0.07);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    vertical-align: middle;
+  }
+  .report-table tr:last-child td { border-bottom: none; }
+  .status-match { color: #69f0ae; }
+  .status-missing { color: var(--red); }
+  .status-mismatch { color: var(--yellow); }
+  .status-unexpected { color: var(--blue); }
+
+  /* PROMPT LIBRARY */
+  .library-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .library-toggle:hover .section-title { color: var(--green2); }
+  .library-body { display: none; margin-top: 12px; }
+  .library-body.open { display: block; }
+  .library-empty { font-size: 0.82rem; color: var(--sage); font-style: italic; }
+  .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .lib-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.8rem;
+  }
+  .lib-card-preview { color: var(--text2); margin-bottom: 6px; line-height: 1.4; }
+  .lib-card-meta { color: var(--sage); font-size: 0.72rem; margin-bottom: 10px; font-family: 'Fira Code', monospace; }
+  .lib-card-actions { display: flex; gap: 8px; }
+
+  /* SAVE BTN */
+  .save-btn-row { margin-top: 12px; display: none; }
+  .save-btn-row.show { display: flex; }
+
+  /* COMPARE send row */
+  .compare-provider-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chevron {
+    display: inline-block;
+    transition: transform 0.2s;
+    font-size: 0.9rem;
+  }
+  .chevron.open { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      🐍 LLM SWITCHBOARD
+      <span>Talk to GPT and Claude from your browser</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="pill" id="compareToggle" onclick="toggleCompare()">⚡ Compare Mode</button>
+    </div>
+  </header>
+
+  <!-- API KEY SETUP -->
+  <div class="section">
+    <div class="section-title">🔑 API Key Setup</div>
+
+    <label class="upload-area" for="envUpload">
+      <input type="file" id="envUpload" accept=".env,.csv,.txt" onchange="handleFileUpload(event)">
+      📁 Upload a <code>.env</code> or <code>.csv</code> file with your API keys — click to browse
+    </label>
+
+    <div class="key-grid">
+      <div class="key-field">
+        <div class="key-label">
+          OpenAI API Key
+          <span class="key-indicator" id="openaiIndicator">✓ loaded</span>
+        </div>
+        <input type="password" id="openaiKeyInput" placeholder="sk-..." oninput="handleKeyInput('openai')">
+      </div>
+      <div class="key-field">
+        <div class="key-label">
+          Anthropic API Key
+          <span class="key-indicator" id="anthropicIndicator">✓ loaded</span>
+        </div>
+        <input type="password" id="anthropicKeyInput" placeholder="sk-ant-..." oninput="handleKeyInput('anthropic')">
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <p class="privacy-notice">🔒 Keys are held in memory only and cleared when you close or refresh this page.</p>
+      <button class="btn-danger" onclick="clearKeys()">✕ Clear Keys</button>
+    </div>
+  </div>
+
+  <!-- MODEL SELECTION (single mode) -->
+  <div class="section" id="singleModelSection">
+    <div class="section-title">🤖 Model</div>
+    <div class="provider-row">
+      <div class="pill-group" id="providerPills">
+        <button class="pill active" onclick="selectProvider('openai', this)">OpenAI</button>
+        <button class="pill" onclick="selectProvider('anthropic', this)">Anthropic</button>
+      </div>
+      <select id="modelSelect" style="max-width:280px;" onchange="onModelChange()"></select>
+    </div>
+    <div class="cors-banner" id="corsBanner">
+      ⚠️ <div><strong>CORS Notice:</strong> Anthropic's API blocks direct browser requests (this is a real security feature, not a bug). If you hit Send, you'll see a friendly explanation. OpenAI works great from the browser!</div>
+    </div>
+  </div>
+
+  <!-- COMPARE MODE: double model selection -->
+  <div class="section" id="compareModelSection" style="display:none;">
+    <div class="section-title">⚡ Compare Mode — Two Models</div>
+    <div class="compare-cols show">
+      <div class="compare-provider-col">
+        <div class="compare-label">LEFT PANEL</div>
+        <div class="pill-group" id="providerPillsA">
+          <button class="pill active" onclick="selectProviderCompare('A','openai',this)">OpenAI</button>
+          <button class="pill" onclick="selectProviderCompare('A','anthropic',this)">Anthropic</button>
+        </div>
+        <select id="modelSelectA" onchange="onModelChangeCompare('A')"></select>
+        <div class="cors-banner" id="corsBannerA">⚠️ <div>Anthropic blocks direct browser requests. Results in CORS error.</div></div>
+      </div>
+      <div class="compare-provider-col">
+        <div class="compare-label">RIGHT PANEL</div>
+        <div class="pill-group" id="providerPillsB">
+          <button class="pill" onclick="selectProviderCompare('B','openai',this)">OpenAI</button>
+          <button class="pill active" onclick="selectProviderCompare('B','anthropic',this)">Anthropic</button>
+        </div>
+        <select id="modelSelectB" onchange="onModelChangeCompare('B')"></select>
+        <div class="cors-banner" id="corsBannerB">⚠️ <div>Anthropic blocks direct browser requests. Results in CORS error.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROMPT -->
+  <div class="section">
+    <div class="section-title">💬 Prompt</div>
+    <div class="prompt-controls">
+      <div class="pill-group">
+        <button class="pill active" id="modeUnstructured" onclick="selectMode('unstructured')">Unstructured</button>
+        <button class="pill" id="modeStructured" onclick="selectMode('structured')">Structured JSON</button>
+      </div>
+      <select id="exampleSelect" onchange="loadExample()" style="max-width:240px;">
+        <option value="">Load example prompt…</option>
+        <option value="0">Element Fun Fact</option>
+        <option value="1">Haiku Generator</option>
+        <option value="2">Book Recommender</option>
+        <option value="3">Mood Check</option>
+        <option value="4">Mini Recipe</option>
+      </select>
+    </div>
+    <textarea id="promptText" rows="5" placeholder="Type your prompt here…" oninput="updateCharCount()"></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+      <span class="char-count" id="charCount">0 chars</span>
+    </div>
+
+    <div class="schema-section" id="schemaSection" style="display:none;">
+      <div class="schema-label">JSON Schema (the structure you want the model to return):</div>
+      <textarea id="schemaText" rows="7" placeholder='{"type":"object","properties":{"field":{"type":"string"}},"required":["field"]}'></textarea>
+    </div>
+
+    <div class="send-row">
+      <button class="send-btn-big" id="sendBtn" onclick="sendPrompt()">
+        <div class="loading-spinner" id="loadingSpinner"></div>
+        🐍 Send Prompt
+      </button>
+      <span style="font-size:0.78rem;color:var(--sage);" id="sendHint"></span>
+    </div>
+  </div>
+
+  <!-- OUTPUT (single mode) -->
+  <div class="section" id="singleOutputSection">
+    <div class="section-title">📤 Output</div>
+    <div class="metrics-bar" id="metricsBar">
+      <span class="metric-chip" id="metricTime"></span>
+      <span class="metric-chip" id="metricTokens"></span>
+      <span class="metric-chip" id="metricLength"></span>
+    </div>
+    <div class="output-panel empty" id="outputPanel">Waiting for your prompt…</div>
+    <div class="error-panel" id="errorPanel"></div>
+    <div class="report-card" id="reportCard">
+      <div class="report-title">🐍 Schema Report Card</div>
+      <table class="report-table" id="reportTable">
+        <thead><tr><th>Field</th><th>Status</th><th>Expected</th><th>Got</th></tr></thead>
+        <tbody id="reportBody"></tbody>
+      </table>
+    </div>
+    <div class="save-btn-row" id="saveBtnRow">
+      <button class="btn-secondary" onclick="saveToLibrary()">💾 Save to Library</button>
+    </div>
+  </div>
+
+  <!-- OUTPUT (compare mode) -->
+  <div class="section" id="compareOutputSection" style="display:none;">
+    <div class="section-title">📤 Compare Output</div>
+    <div class="compare-cols show">
+      <div>
+        <div class="compare-label" id="compareLabelA">LEFT</div>
+        <div class="metrics-bar" id="metricsBarA"></div>
+        <div class="output-panel empty" id="outputPanelA">Waiting…</div>
+        <div class="error-panel" id="errorPanelA"></div>
+      </div>
+      <div>
+        <div class="compare-label" id="compareLabelB">RIGHT</div>
+        <div class="metrics-bar" id="metricsBarB"></div>
+        <div class="output-panel empty" id="outputPanelB">Waiting…</div>
+        <div class="error-panel" id="errorPanelB"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROMPT LIBRARY -->
+  <div class="section">
+    <div class="library-toggle" onclick="toggleLibrary()">
+      <div class="section-title" style="margin-bottom:0;">🐍 Prompt Library</div>
+      <span class="chevron" id="libChevron">▼</span>
+    </div>
+    <div class="library-body" id="libraryBody">
+      <div class="library-empty" id="libraryEmpty">No saved prompts yet. Hit "Save to Library" after a response.</div>
+      <div class="library-grid" id="libraryGrid"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let keys = { openai: '', anthropic: '' };
+let currentProvider = 'openai';
+let currentMode = 'unstructured';
+let compareMode = false;
+let compareProviderA = 'openai';
+let compareProviderB = 'anthropic';
+let promptLibrary = [];
+let lastResponse = null;
+let libraryOpen = false;
+
+const MODELS = {
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001']
+};
+
+const EXAMPLES = [
+  {
+    prompt: 'Tell me an interesting fun fact about the element Tungsten.',
+    mode: 'structured',
+    schema: JSON.stringify({
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        symbol: { type: 'string' },
+        atomic_number: { type: 'integer' },
+        fun_fact: { type: 'string' }
+      },
+      required: ['name', 'symbol', 'atomic_number', 'fun_fact']
+    }, null, 2)
+  },
+  {
+    prompt: 'Write a haiku about a snake slithering through tall grass.',
+    mode: 'structured',
+    schema: JSON.stringify({
+      type: 'object',
+      properties: {
+        line1: { type: 'string' },
+        line2: { type: 'string' },
+        line3: { type: 'string' },
+        syllable_counts: { type: 'array', items: { type: 'integer' } }
+      },
+      required: ['line1', 'line2', 'line3', 'syllable_counts']
+    }, null, 2)
+  },
+  {
+    prompt: 'Recommend a science fiction novel for someone who liked The Martian.',
+    mode: 'structured',
+    schema: JSON.stringify({
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        author: { type: 'string' },
+        year: { type: 'integer' },
+        why_youll_like_it: { type: 'string' },
+        trigger_warning: { type: 'string' }
+      },
+      required: ['title', 'author', 'year', 'why_youll_like_it', 'trigger_warning']
+    }, null, 2)
+  },
+  {
+    prompt: "I've been feeling a bit overwhelmed lately. What's one small thing I can do right now to feel better?",
+    mode: 'unstructured',
+    schema: ''
+  },
+  {
+    prompt: 'Give me a simple 3-ingredient recipe I can make in under 10 minutes.',
+    mode: 'structured',
+    schema: JSON.stringify({
+      type: 'object',
+      properties: {
+        recipe_name: { type: 'string' },
+        ingredients: { type: 'array', items: { type: 'string' } },
+        steps: { type: 'array', items: { type: 'string' } },
+        time_minutes: { type: 'integer' }
+      },
+      required: ['recipe_name', 'ingredients', 'steps', 'time_minutes']
+    }, null, 2)
+  }
+];
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  populateModelSelect('modelSelect', 'openai');
+  populateModelSelect('modelSelectA', 'openai');
+  populateModelSelect('modelSelectB', 'anthropic');
+}
+
+function populateModelSelect(selectId, provider) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = '';
+  MODELS[provider].forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+}
+
+// ─── KEYS ─────────────────────────────────────────────────────────────────────
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result;
+    const openaiMatch = text.match(/OPENAI_API_KEY\s*[=,]\s*["']?([^\s"',\n]+)["']?/i);
+    const anthropicMatch = text.match(/ANTHROPIC_API_KEY\s*[=,]\s*["']?([^\s"',\n]+)["']?/i);
+    if (openaiMatch) { keys.openai = openaiMatch[1]; document.getElementById('openaiKeyInput').value = openaiMatch[1]; showIndicator('openai'); }
+    if (anthropicMatch) { keys.anthropic = anthropicMatch[1]; document.getElementById('anthropicKeyInput').value = anthropicMatch[1]; showIndicator('anthropic'); }
+    if (!openaiMatch && !anthropicMatch) alert('Could not find OPENAI_API_KEY or ANTHROPIC_API_KEY in the file.');
+  };
+  reader.readAsText(file);
+}
+
+function handleKeyInput(provider) {
+  const val = document.getElementById(provider === 'openai' ? 'openaiKeyInput' : 'anthropicKeyInput').value.trim();
+  keys[provider] = val;
+  if (val) showIndicator(provider); else hideIndicator(provider);
+}
+
+function showIndicator(provider) {
+  document.getElementById(provider === 'openai' ? 'openaiIndicator' : 'anthropicIndicator').classList.add('loaded');
+}
+function hideIndicator(provider) {
+  document.getElementById(provider === 'openai' ? 'openaiIndicator' : 'anthropicIndicator').classList.remove('loaded');
+}
+
+function clearKeys() {
+  keys = { openai: '', anthropic: '' };
+  document.getElementById('openaiKeyInput').value = '';
+  document.getElementById('anthropicKeyInput').value = '';
+  hideIndicator('openai');
+  hideIndicator('anthropic');
+}
+
+// ─── PROVIDER / MODEL ──────────────────────────────────────────────────────────
+function selectProvider(provider, btn) {
+  currentProvider = provider;
+  document.querySelectorAll('#providerPills .pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  populateModelSelect('modelSelect', provider);
+  onModelChange();
+}
+
+function onModelChange() {
+  const banner = document.getElementById('corsBanner');
+  if (currentProvider === 'anthropic') banner.classList.add('show');
+  else banner.classList.remove('show');
+}
+
+function selectProviderCompare(side, provider, btn) {
+  if (side === 'A') { compareProviderA = provider; populateModelSelect('modelSelectA', provider); onModelChangeCompare('A'); }
+  else { compareProviderB = provider; populateModelSelect('modelSelectB', provider); onModelChangeCompare('B'); }
+  const group = document.getElementById('providerPills' + side);
+  group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function onModelChangeCompare(side) {
+  const provider = side === 'A' ? compareProviderA : compareProviderB;
+  const banner = document.getElementById('corsBanner' + side);
+  if (provider === 'anthropic') banner.classList.add('show');
+  else banner.classList.remove('show');
+}
+
+// ─── COMPARE TOGGLE ───────────────────────────────────────────────────────────
+function toggleCompare() {
+  compareMode = !compareMode;
+  const btn = document.getElementById('compareToggle');
+  document.getElementById('singleModelSection').style.display = compareMode ? 'none' : '';
+  document.getElementById('compareModelSection').style.display = compareMode ? '' : 'none';
+  document.getElementById('singleOutputSection').style.display = compareMode ? 'none' : '';
+  document.getElementById('compareOutputSection').style.display = compareMode ? '' : 'none';
+  btn.classList.toggle('active', compareMode);
+  btn.textContent = compareMode ? '✕ Exit Compare' : '⚡ Compare Mode';
+}
+
+// ─── OUTPUT MODE ──────────────────────────────────────────────────────────────
+function selectMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeUnstructured').classList.toggle('active', mode === 'unstructured');
+  document.getElementById('modeStructured').classList.toggle('active', mode === 'structured');
+  document.getElementById('schemaSection').style.display = mode === 'structured' ? '' : 'none';
+}
+
+// ─── EXAMPLES ─────────────────────────────────────────────────────────────────
+function loadExample() {
+  const idx = document.getElementById('exampleSelect').value;
+  if (idx === '') return;
+  const ex = EXAMPLES[parseInt(idx)];
+  document.getElementById('promptText').value = ex.prompt;
+  selectMode(ex.mode);
+  if (ex.mode === 'structured') document.getElementById('schemaText').value = ex.schema;
+  updateCharCount();
+  document.getElementById('exampleSelect').value = '';
+}
+
+function updateCharCount() {
+  const len = document.getElementById('promptText').value.length;
+  document.getElementById('charCount').textContent = len.toLocaleString() + ' chars';
+}
+
+// ─── SEND ─────────────────────────────────────────────────────────────────────
+async function sendPrompt() {
+  const prompt = document.getElementById('promptText').value.trim();
+  if (!prompt) { showError('Please enter a prompt before sending.', 'errorPanel'); return; }
+
+  if (compareMode) {
+    await sendCompare(prompt);
+  } else {
+    await sendSingle(prompt);
+  }
+}
+
+function setLoading(loading) {
+  const btn = document.getElementById('sendBtn');
+  const spinner = document.getElementById('loadingSpinner');
+  btn.disabled = loading;
+  spinner.style.display = loading ? 'inline-block' : 'none';
+  btn.childNodes[btn.childNodes.length-1].textContent = loading ? ' Sending…' : ' Send Prompt';
+}
+
+async function sendSingle(prompt) {
+  const provider = currentProvider;
+  const model = document.getElementById('modelSelect').value;
+  const key = keys[provider];
+
+  if (!key) { showError(`No ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key loaded. Please add it above.`, 'errorPanel'); return; }
+
+  hideError('errorPanel');
+  document.getElementById('metricsBar').classList.remove('show');
+  document.getElementById('reportCard').classList.remove('show');
+  document.getElementById('saveBtnRow').classList.remove('show');
+  setOutput('outputPanel', 'Waiting for response…', false);
+  setLoading(true);
+
+  const t0 = Date.now();
+  try {
+    const result = await callAPI(provider, model, key, prompt, currentMode, document.getElementById('schemaText').value);
+    const elapsed = Date.now() - t0;
+    lastResponse = { provider, model, prompt, mode: currentMode, schema: document.getElementById('schemaText').value, result };
+    renderOutput('outputPanel', 'errorPanel', result, currentMode);
+    showMetrics('metricsBar', elapsed, result);
+    document.getElementById('saveBtnRow').classList.add('show');
+    if (currentMode === 'structured') validateSchema(result);
+  } catch (err) {
+    showError(friendlyError(err, provider), 'errorPanel');
+    setOutput('outputPanel', '', true);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function sendCompare(prompt) {
+  const modelA = document.getElementById('modelSelectA').value;
+  const modelB = document.getElementById('modelSelectB').value;
+  const keyA = keys[compareProviderA];
+  const keyB = keys[compareProviderB];
+
+  document.getElementById('compareLabelA').textContent = `${compareProviderA.toUpperCase()} / ${modelA}`;
+  document.getElementById('compareLabelB').textContent = `${compareProviderB.toUpperCase()} / ${modelB}`;
+
+  hideError('errorPanelA'); hideError('errorPanelB');
+  setOutput('outputPanelA', 'Sending…', false);
+  setOutput('outputPanelB', 'Sending…', false);
+  document.getElementById('metricsBarA').classList.remove('show');
+  document.getElementById('metricsBarB').classList.remove('show');
+  setLoading(true);
+
+  const schemaVal = document.getElementById('schemaText').value;
+
+  const [resA, resB] = await Promise.allSettled([
+    (async () => {
+      if (!keyA) throw new Error(`No API key for ${compareProviderA}`);
+      const t0 = Date.now();
+      const r = await callAPI(compareProviderA, modelA, keyA, prompt, currentMode, schemaVal);
+      return { result: r, elapsed: Date.now() - t0 };
+    })(),
+    (async () => {
+      if (!keyB) throw new Error(`No API key for ${compareProviderB}`);
+      const t0 = Date.now();
+      const r = await callAPI(compareProviderB, modelB, keyB, prompt, currentMode, schemaVal);
+      return { result: r, elapsed: Date.now() - t0 };
+    })()
+  ]);
+
+  setLoading(false);
+
+  if (resA.status === 'fulfilled') {
+    renderOutput('outputPanelA', 'errorPanelA', resA.value.result, currentMode);
+    showMetricsCompare('metricsBarA', resA.value.elapsed, resA.value.result);
+  } else {
+    showError(friendlyError(resA.reason, compareProviderA), 'errorPanelA');
+    setOutput('outputPanelA', '', true);
+  }
+
+  if (resB.status === 'fulfilled') {
+    renderOutput('outputPanelB', 'errorPanelB', resB.value.result, currentMode);
+    showMetricsCompare('metricsBarB', resB.value.elapsed, resB.value.result);
+  } else {
+    showError(friendlyError(resB.reason, compareProviderB), 'errorPanelB');
+    setOutput('outputPanelB', '', true);
+  }
+}
+
+// ─── API CALLS ────────────────────────────────────────────────────────────────
+async function callAPI(provider, model, key, prompt, mode, schemaRaw) {
+  const timeout = 30000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    if (provider === 'openai') return await callOpenAI(model, key, prompt, mode, schemaRaw, controller.signal);
+    else return await callAnthropic(model, key, prompt, mode, schemaRaw, controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function callOpenAI(model, key, prompt, mode, schemaRaw, signal) {
+  let systemMsg = mode === 'structured'
+    ? buildStructuredSystemPrompt(schemaRaw)
+    : 'You are a helpful assistant.';
+
+  const body = {
+    model,
+    messages: [
+      { role: 'system', content: systemMsg },
+      { role: 'user', content: prompt }
+    ],
+    max_tokens: 1024
+  };
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const e = new Error(err.error?.message || `HTTP ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
+
+  const data = await res.json();
+  return {
+    text: data.choices[0].message.content,
+    usage: data.usage,
+    provider: 'openai'
+  };
+}
+
+async function callAnthropic(model, key, prompt, mode, schemaRaw, signal) {
+  let systemMsg = mode === 'structured'
+    ? buildStructuredSystemPrompt(schemaRaw)
+    : 'You are a helpful assistant.';
+
+  const body = {
+    model,
+    max_tokens: 1024,
+    system: systemMsg,
+    messages: [{ role: 'user', content: prompt }]
+  };
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body),
+    signal
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const e = new Error(err.error?.message || `HTTP ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
+
+  const data = await res.json();
+  return {
+    text: data.content[0].text,
+    usage: data.usage,
+    provider: 'anthropic'
+  };
+}
+
+function buildStructuredSystemPrompt(schemaRaw) {
+  let schemaNote = '';
+  if (schemaRaw && schemaRaw.trim()) {
+    schemaNote = `\n\nReturn ONLY a valid JSON object matching this schema:\n${schemaRaw.trim()}\n\nDo not include any text outside of the JSON object.`;
+  } else {
+    schemaNote = '\n\nReturn your response as a valid JSON object only. Do not include any text outside the JSON.';
+  }
+  return 'You are a helpful assistant that always responds in valid JSON.' + schemaNote;
+}
+
+// ─── RENDERING ────────────────────────────────────────────────────────────────
+function setOutput(panelId, text, empty) {
+  const el = document.getElementById(panelId);
+  el.textContent = text;
+  el.classList.toggle('empty', empty || !text);
+}
+
+function renderOutput(panelId, errorPanelId, result, mode) {
+  const el = document.getElementById(panelId);
+  el.classList.remove('empty');
+
+  if (mode === 'structured') {
+    try {
+      const jsonStr = extractJSON(result.text);
+      const parsed = JSON.parse(jsonStr);
+      el.innerHTML = '';
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      code.className = 'language-json';
+      code.textContent = JSON.stringify(parsed, null, 2);
+      pre.appendChild(code);
+      el.appendChild(pre);
+      hljs.highlightElement(code);
+      result._parsed = parsed;
+    } catch (e) {
+      el.classList.add('empty');
+      showError(`Could not parse JSON response: ${e.message}\n\nRaw response:\n${result.text}`, errorPanelId);
+    }
+  } else {
+    el.textContent = result.text;
+  }
+}
+
+function extractJSON(text) {
+  // Try to find JSON object in the text
+  const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/```\s*([\s\S]*?)```/);
+  if (match) return match[1].trim();
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) return text.slice(start, end + 1);
+  return text.trim();
+}
+
+function showMetrics(barId, elapsed, result) {
+  const bar = document.getElementById(barId);
+  bar.innerHTML = '';
+  bar.classList.add('show');
+  bar.appendChild(makeChip(`⏱ ${elapsed.toLocaleString()} ms`));
+  if (result.usage) {
+    const tokens = result.provider === 'openai'
+      ? result.usage.total_tokens
+      : (result.usage.input_tokens || 0) + (result.usage.output_tokens || 0);
+    if (tokens) bar.appendChild(makeChip(`🔤 ${tokens.toLocaleString()} tokens`));
+  }
+  bar.appendChild(makeChip(`📏 ${result.text.length.toLocaleString()} chars`));
+}
+
+function showMetricsCompare(barId, elapsed, result) {
+  showMetrics(barId, elapsed, result);
+}
+
+function makeChip(text) {
+  const span = document.createElement('span');
+  span.className = 'metric-chip';
+  span.textContent = text;
+  return span;
+}
+
+// ─── ERROR HANDLING ───────────────────────────────────────────────────────────
+function friendlyError(err, provider) {
+  const msg = err.message || '';
+  if (err.name === 'AbortError') return '⏱ Request timed out after 30 seconds. The model may be slow or unavailable. Try again.';
+  if (err instanceof TypeError && msg.includes('fetch')) {
+    if (provider === 'anthropic') {
+      return `🐍⚠️ CORS Block — Anthropic's API doesn't allow direct browser requests (CORS policy). This is a real-world backend security feature, not a bug. To use Anthropic models, you'd need a backend proxy server.\n\nOpenAI works fine from the browser!`;
+    }
+    return '🌐 Network error — check your internet connection and try again.';
+  }
+  if (err.status === 401 || err.status === 403) return `🔑 Invalid or unauthorized API key (${err.status}). Please double-check your key.`;
+  if (err.status === 429) return '⏳ Rate limit reached (429). Please wait a moment and try again.';
+  if (err.status === 400) return `❌ Bad request (400): ${msg}`;
+  return `❌ Error: ${msg}`;
+}
+
+function showError(msg, panelId) {
+  const el = document.getElementById(panelId);
+  el.textContent = '🐍⚠️ ' + msg;
+  el.classList.add('show');
+}
+
+function hideError(panelId) {
+  const el = document.getElementById(panelId);
+  el.classList.remove('show');
+}
+
+// ─── SCHEMA VALIDATION ────────────────────────────────────────────────────────
+function validateSchema(result) {
+  const schemaRaw = document.getElementById('schemaText').value.trim();
+  if (!schemaRaw || !result._parsed) return;
+
+  let schema;
+  try { schema = JSON.parse(schemaRaw); } catch { return; }
+
+  const props = schema.properties || {};
+  const resp = result._parsed;
+  const rows = [];
+
+  // Check schema properties against response
+  for (const [field, def] of Object.entries(props)) {
+    if (!(field in resp)) {
+      rows.push({ field, status: 'missing', expected: def.type || '?', got: '—' });
+    } else {
+      const val = resp[field];
+      const gotType = Array.isArray(val) ? 'array' : typeof val;
+      const expectedType = def.type || '?';
+      if (gotType === expectedType || expectedType === '?') {
+        rows.push({ field, status: 'match', expected: expectedType, got: gotType });
+      } else {
+        rows.push({ field, status: 'mismatch', expected: expectedType, got: gotType });
+      }
+    }
+  }
+
+  // Check response fields not in schema
+  for (const field of Object.keys(resp)) {
+    if (!(field in props)) {
+      const val = resp[field];
+      const gotType = Array.isArray(val) ? 'array' : typeof val;
+      rows.push({ field, status: 'unexpected', expected: '—', got: gotType });
+    }
+  }
+
+  const tbody = document.getElementById('reportBody');
+  tbody.innerHTML = '';
+  rows.forEach(row => {
+    const icons = { match: '✅ match', missing: '❌ missing', mismatch: '⚠️ type mismatch', unexpected: '🔵 unexpected' };
+    const classes = { match: 'status-match', missing: 'status-missing', mismatch: 'status-mismatch', unexpected: 'status-unexpected' };
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${esc(row.field)}</td><td class="${classes[row.status]}">${icons[row.status]}</td><td>${esc(row.expected)}</td><td>${esc(row.got)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('reportCard').classList.add('show');
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── LIBRARY ──────────────────────────────────────────────────────────────────
+function saveToLibrary() {
+  if (!lastResponse) return;
+  const entry = {
+    id: Date.now(),
+    prompt: lastResponse.prompt,
+    provider: lastResponse.provider,
+    model: lastResponse.model,
+    mode: lastResponse.mode,
+    schema: lastResponse.schema,
+    text: lastResponse.result.text
+  };
+  promptLibrary.unshift(entry);
+  renderLibrary();
+  if (!libraryOpen) toggleLibrary();
+}
+
+function renderLibrary() {
+  const grid = document.getElementById('libraryGrid');
+  const empty = document.getElementById('libraryEmpty');
+  grid.innerHTML = '';
+  if (promptLibrary.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  promptLibrary.forEach(entry => {
+    const card = document.createElement('div');
+    card.className = 'lib-card';
+    card.innerHTML = `
+      <div class="lib-card-preview">${esc(entry.prompt.slice(0,80))}${entry.prompt.length>80?'…':''}</div>
+      <div class="lib-card-meta">${entry.provider} / ${entry.model} · ${entry.mode}</div>
+      <div class="lib-card-actions">
+        <button class="btn-secondary" style="font-size:0.75rem;padding:5px 12px;" onclick="loadFromLibrary(${entry.id})">Load</button>
+        <button class="btn-danger" style="font-size:0.75rem;padding:5px 12px;" onclick="deleteFromLibrary(${entry.id})">Delete</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function loadFromLibrary(id) {
+  const entry = promptLibrary.find(e => e.id === id);
+  if (!entry) return;
+  document.getElementById('promptText').value = entry.prompt;
+  selectMode(entry.mode);
+  if (entry.schema) document.getElementById('schemaText').value = entry.schema;
+  updateCharCount();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteFromLibrary(id) {
+  promptLibrary = promptLibrary.filter(e => e.id !== id);
+  renderLibrary();
+}
+
+function toggleLibrary() {
+  libraryOpen = !libraryOpen;
+  document.getElementById('libraryBody').classList.toggle('open', libraryOpen);
+  document.getElementById('libChevron').classList.toggle('open', libraryOpen);
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
