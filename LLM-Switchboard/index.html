@@ -13,11 +13,11 @@
     --bg:      #dff0d8;
     --bg2:     #cce3c2;
     --bg3:     #bdd9b1;
-    --card1:   #e8f5e2;
-    --card2:   #e2f0db;
-    --card3:   #dcebd4;
+    --card1:   #eef5e8;
+    --card2:   #e8f0e0;
+    --card3:   #fdf0f2;
     --card4:   #d5e6cc;
-    --card5:   #cfe1c5;
+    --card5:   #fbeef0;
     --dark:    #2d4a2d;
     --mid:     #4a7a4a;
     --accent:  #6aaa6a;
@@ -29,8 +29,11 @@
     --border:  rgba(45,74,45,0.18);
     --shadow:  0 2px 12px rgba(45,74,45,0.12);
     --shadow2: 0 4px 20px rgba(45,74,45,0.16);
-    --red:     #c0392b;
-    --red-bg:  #fdf0ef;
+    --red:        #c0392b;
+    --red-bg:     #fdf0ef;
+    --strawberry: #e8344a;
+    --berry-light:#fce8eb;
+    --berry-mid:  #f4a0aa;
     --yellow:  #8a6a00;
     --yellow-bg: #fffbea;
     --blue:    #1a6080;
@@ -71,7 +74,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 24px 0 18px;
-    border-bottom: 2px solid var(--border);
+    border-bottom: 2.5px solid var(--strawberry);
     margin-bottom: 22px;
     flex-wrap: wrap;
     gap: 12px;
@@ -185,10 +188,10 @@
     transition: all 0.18s;
   }
   .pill.active {
-    background: var(--mid);
-    border-color: var(--mid);
+    background: linear-gradient(135deg, var(--mid), var(--strawberry));
+    border-color: var(--strawberry);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(74,122,74,0.35);
+    box-shadow: 0 2px 8px rgba(232,52,74,0.28);
   }
   .pill:hover:not(.active) { border-color: var(--accent); color: var(--text2); background: rgba(255,255,255,0.6); }
 
@@ -272,7 +275,7 @@
     padding: 8px 12px;
     background: rgba(255,255,255,0.4);
     border-radius: 8px;
-    border-left: 3px solid var(--accent);
+    border-left: 3px solid var(--strawberry);
     font-weight: 500;
   }
 
@@ -324,7 +327,7 @@
   /* SEND */
   .send-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
   .send-btn-big {
-    background: linear-gradient(135deg, var(--mid), var(--dark));
+    background: linear-gradient(135deg, var(--mid), var(--strawberry));
     color: #fff;
     padding: 13px 30px;
     border-radius: 12px;
@@ -336,9 +339,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 3px 12px rgba(45,74,45,0.3);
+    box-shadow: 0 3px 12px rgba(232,52,74,0.3);
   }
-  .send-btn-big:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(45,74,45,0.35); }
+  .send-btn-big:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232,52,74,0.38); }
   .send-btn-big:disabled { background: var(--pale); color: var(--sage); cursor: not-allowed; transform: none; box-shadow: none; }
   .loading-spinner {
     display: none;
@@ -481,7 +484,7 @@
   <!-- HEADER -->
   <header>
     <div class="logo">
-      🐍 LLM Switchboard
+      🐍 LLM Switchboard 🍓
       <span>Chat with GPT and Claude from your browser</span>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -491,7 +494,7 @@
 
   <!-- API KEY SETUP -->
   <div class="section s1">
-    <div class="section-title">🔑 API Key Setup</div>
+    <div class="section-title">🍓 API Key Setup</div>
 
     <label class="upload-area" for="envUpload">
       <input type="file" id="envUpload" accept=".env,.csv,.txt" onchange="handleFileUpload(event)">
@@ -558,7 +561,7 @@
 
   <!-- PROMPT -->
   <div class="section s3">
-    <div class="section-title">💬 Prompt</div>
+    <div class="section-title">🍓 Prompt</div>
     <div class="prompt-controls">
       <div class="pill-group">
         <button class="pill active" id="modeUnstructured" onclick="selectMode('unstructured')">Unstructured</button>
@@ -684,6 +687,38 @@
   let snakes = Array.from({length: 7}, makeSnake);
   let frame = 0;
 
+  // floating strawberries
+  function makeStrawberry() {
+    return {
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: 18 + Math.random() * 22,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: -0.2 - Math.random() * 0.3,
+      opacity: 0.12 + Math.random() * 0.18,
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: 0.01 + Math.random() * 0.015
+    };
+  }
+  const BERRY_EMOJI = '🍓';
+  let berries = Array.from({length: 9}, makeStrawberry);
+
+  function drawBerries() {
+    berries.forEach((b, i) => {
+      b.wobble += b.wobbleSpeed;
+      b.x += b.vx + Math.sin(b.wobble) * 0.3;
+      b.y += b.vy;
+      if (b.y < -60) { berries[i] = makeStrawberry(); berries[i].y = canvas.height + 40; }
+      ctx.save();
+      ctx.globalAlpha = b.opacity;
+      ctx.font = `${b.size}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(BERRY_EMOJI, b.x, b.y);
+      ctx.restore();
+    });
+  }
+
   function drawSnake(s) {
     ctx.save();
     ctx.strokeStyle = s.color;
@@ -735,6 +770,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
 
+    drawBerries();
     snakes.forEach((s, i) => {
       s.t += 0.04;
       s.x += Math.cos(s.angle) * s.speed;
