@@ -97,6 +97,14 @@ to run a command, use the function calls provided.</div>
   <!-- ── API KEY ────────────────────────────────────────── -->
   <div class="section">
     <div class="section-title">🔑 API Key</div>
+    <div class="key-input-row">
+      <div class="field-label">Paste API Key</div>
+      <div class="key-text-row">
+        <input type="password" id="apiKeyInput" placeholder="sk-…" autocomplete="off" spellcheck="false">
+        <button class="btn-key-toggle" id="keyToggle" type="button" aria-label="Show/hide key">👁</button>
+      </div>
+    </div>
+    <div class="key-divider">or</div>
     <div class="key-upload-area" id="keyUploadArea">
       <input type="file" id="envUpload" accept=".env,.txt,.csv" aria-label="Upload .env file">
       <div class="key-upload-icon">📁</div>

@@ -4,6 +4,8 @@ let cachedModels = null;
 
 // ─── DOM REFS ─────────────────────────────────────────────────────────────────
 const envUpload     = document.getElementById('envUpload');
+const apiKeyInput   = document.getElementById('apiKeyInput');
+const keyToggle     = document.getElementById('keyToggle');
 const keyStatus     = document.getElementById('keyStatus');
 const modelSelect   = document.getElementById('modelSelect');
 const modelStatus   = document.getElementById('modelStatus');
@@ -20,6 +22,26 @@ window.addEventListener('DOMContentLoaded', () => {
   fetchModels();
 });
 
+// ─── TYPED KEY INPUT ──────────────────────────────────────────────────────────
+apiKeyInput.addEventListener('input', () => {
+  const val = apiKeyInput.value.trim();
+  apiKey = val;
+  if (val) {
+    setKeyStatus('loaded', '✅ OpenAI key loaded successfully');
+    cachedModels = null;
+    fetchModels();
+  } else {
+    setKeyStatus('', 'No key loaded');
+  }
+  updateGenerateBtn();
+});
+
+keyToggle.addEventListener('click', () => {
+  const isPassword = apiKeyInput.type === 'password';
+  apiKeyInput.type = isPassword ? 'text' : 'password';
+  keyToggle.textContent = isPassword ? '🙈' : '👁';
+});
+
 // ─── ENV FILE LOADING ─────────────────────────────────────────────────────────
 // Pattern mirrors the Switchboard reference (temp/switchboard.html → handleFileUpload)
 envUpload.addEventListener('change', (e) => {
@@ -31,6 +53,9 @@ envUpload.addEventListener('change', (e) => {
     const match = text.match(/OPENAI_API_KEY\s*[=,]\s*["']?([^\s"',\n]+)["']?/i);
     if (match) {
       apiKey = match[1].trim();
+      apiKeyInput.value = apiKey;
+      apiKeyInput.type = 'password';
+      keyToggle.textContent = '👁';
       setKeyStatus('loaded', '✅ OpenAI key loaded successfully');
       updateGenerateBtn();
     } else {
