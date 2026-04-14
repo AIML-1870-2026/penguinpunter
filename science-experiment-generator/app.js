@@ -1,4 +1,4 @@
-// ─── BACKGROUND ANIMATION (floating science emojis) ─────────────────────────
+// ─── BACKGROUND ANIMATION (slime drips + blobs) ─────────────────────────────
 (function () {
   const canvas = document.getElementById('bgCanvas');
   const ctx = canvas.getContext('2d');
@@ -10,42 +10,178 @@
   resize();
   window.addEventListener('resize', resize);
 
-  const SCIENCE_EMOJIS = ['🔬', '⚗️', '🧪', '⚡', '🌡️', '🧫', '🔭', '💡', '🧲', '🌊'];
+  // Slime color palette — translucent greens
+  const SLIME_COLORS = [
+    'rgba(80, 210, 60, ',
+    'rgba(100, 230, 50, ',
+    'rgba(60, 190, 80, ',
+    'rgba(130, 220, 40, ',
+    'rgba(50, 170, 70, ',
+  ];
 
-  function makeParticle() {
+  function rndColor(alpha) {
+    return SLIME_COLORS[Math.floor(Math.random() * SLIME_COLORS.length)] + alpha + ')';
+  }
+
+  // ── DRIPS: hang from top edge, grow downward, then fall ──────────────────
+  function makeDrip() {
     return {
       x: Math.random() * canvas.width,
-      y: canvas.height + 40,
-      emoji: SCIENCE_EMOJIS[Math.floor(Math.random() * SCIENCE_EMOJIS.length)],
-      size: 16 + Math.random() * 18,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: -(0.25 + Math.random() * 0.35),
-      opacity: 0.1 + Math.random() * 0.14,
+      topY: 0,
+      length: 20 + Math.random() * 40,        // current drawn length
+      maxLength: 60 + Math.random() * 120,     // how long before it falls
+      width: 8 + Math.random() * 18,
+      growSpeed: 0.18 + Math.random() * 0.35,
+      falling: false,
+      fallVY: 0,
+      opacity: 0.13 + Math.random() * 0.14,
+      color: rndColor(0.14),
+      phase: 'grow',                           // grow → drip → fall
       wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 0.008 + Math.random() * 0.012,
     };
   }
 
-  let particles = Array.from({ length: 14 }, makeParticle);
+  // ── BLOBS: wobbly circles drifting slowly across the screen ──────────────
+  function makeBlob() {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    return {
+      x: side === -1 ? -80 : canvas.width + 80,
+      y: 80 + Math.random() * (canvas.height - 160),
+      r: 22 + Math.random() * 45,
+      vx: side * (0.15 + Math.random() * 0.25),
+      vy: (Math.random() - 0.5) * 0.12,
+      t: Math.random() * Math.PI * 2,
+      speed: 0.012 + Math.random() * 0.018,
+      opacity: 0.07 + Math.random() * 0.1,
+      color: rndColor(0.09),
+      numPts: 7 + Math.floor(Math.random() * 4),
+    };
+  }
+
+  // ── BUBBLES: small circles rising from the bottom ────────────────────────
+  function makeBubble() {
+    return {
+      x: Math.random() * canvas.width,
+      y: canvas.height + 20,
+      r: 4 + Math.random() * 14,
+      vy: -(0.3 + Math.random() * 0.5),
+      vx: (Math.random() - 0.5) * 0.3,
+      opacity: 0.08 + Math.random() * 0.1,
+      color: rndColor(0.09),
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: 0.02 + Math.random() * 0.03,
+    };
+  }
+
+  let drips    = Array.from({ length: 12 }, makeDrip);
+  let blobs    = Array.from({ length: 7  }, makeBlob);
+  let bubbles  = Array.from({ length: 10 }, makeBubble);
+
+  // ── Draw an organic blob shape ────────────────────────────────────────────
+  function drawBlob(b) {
+    ctx.save();
+    ctx.globalAlpha = b.opacity;
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    const pts = b.numPts;
+    for (let i = 0; i <= pts; i++) {
+      const angle = (i / pts) * Math.PI * 2;
+      const wobble = 1 + 0.22 * Math.sin(b.t * 1.8 + i * 2.1)
+                       + 0.12 * Math.cos(b.t * 2.7 + i * 1.3);
+      const px = b.x + Math.cos(angle) * b.r * wobble;
+      const py = b.y + Math.sin(angle) * b.r * wobble * 0.75; // slightly squished
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Draw a slime drip teardrop ────────────────────────────────────────────
+  function drawDrip(d) {
+    const { x, topY, length, width, wobble } = d;
+    const wx = Math.sin(wobble) * (width * 0.15); // slight sway
+
+    ctx.save();
+    ctx.globalAlpha = d.opacity;
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    // Top flat edge (attached to ceiling or falling)
+    ctx.moveTo(x - width / 2 + wx, topY);
+    // Left side curve down to rounded tip
+    ctx.bezierCurveTo(
+      x - width / 2 + wx, topY + length * 0.35,
+      x - width * 0.55 + wx, topY + length * 0.7,
+      x + wx, topY + length
+    );
+    // Right side back up
+    ctx.bezierCurveTo(
+      x + width * 0.55 + wx, topY + length * 0.7,
+      x + width / 2 + wx, topY + length * 0.35,
+      x + width / 2 + wx, topY
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Draw a bubble (circle with slight highlight) ──────────────────────────
+  function drawBubble(b) {
+    ctx.save();
+    ctx.globalAlpha = b.opacity;
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  let frame = 0;
 
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach((p, i) => {
-      p.wobble += p.wobbleSpeed;
-      p.x += p.vx + Math.sin(p.wobble) * 0.35;
-      p.y += p.vy;
-      if (p.y < -60) {
-        particles[i] = makeParticle();
-        particles[i].y = canvas.height + 40;
+    frame++;
+
+    // ── Blobs ──
+    blobs.forEach((b, i) => {
+      b.t += b.speed;
+      b.x += b.vx;
+      b.y += b.vy;
+      // Respawn when off screen
+      if ((b.vx > 0 && b.x > canvas.width + 100) ||
+          (b.vx < 0 && b.x < -100)) {
+        blobs[i] = makeBlob();
       }
-      ctx.save();
-      ctx.globalAlpha = p.opacity;
-      ctx.font = `${p.size}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(p.emoji, p.x, p.y);
-      ctx.restore();
+      drawBlob(b);
     });
+
+    // ── Drips ──
+    drips.forEach((d, i) => {
+      d.wobble += 0.025;
+      if (d.phase === 'grow') {
+        d.length += d.growSpeed;
+        if (d.length >= d.maxLength) d.phase = 'fall';
+      } else {
+        // Fall
+        d.fallVY += 0.12;
+        d.topY += d.fallVY;
+        if (d.topY > canvas.height + 60) drips[i] = makeDrip();
+      }
+      drawDrip(d);
+    });
+
+    // ── Bubbles ──
+    bubbles.forEach((b, i) => {
+      b.wobble += b.wobbleSpeed;
+      b.x += b.vx + Math.sin(b.wobble) * 0.25;
+      b.y += b.vy;
+      if (b.y < -30) {
+        bubbles[i] = makeBubble();
+      }
+      drawBubble(b);
+    });
+
     requestAnimationFrame(animate);
   }
   animate();
