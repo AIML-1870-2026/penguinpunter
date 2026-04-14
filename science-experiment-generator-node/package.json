@@ -1,0 +1,20 @@
+{
+  "name": "science-experiment-generator-node",
+  "version": "1.0.0",
+  "description": "K-12 science experiment generator — Node.js backend with OpenAI, Anthropic, and Google LLM support",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

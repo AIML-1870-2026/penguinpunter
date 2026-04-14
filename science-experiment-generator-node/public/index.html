@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔬 Science Experiment Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="container">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header>
+    <div class="logo">
+      🔬 Science Experiment Generator
+      <span>Node.js · AI-powered experiments for K–12</span>
+    </div>
+  </header>
+
+  <!-- ── Section 1: LLM Setup ───────────────────────────────── -->
+  <div class="section s1">
+    <div class="section-title">🤖 LLM Configuration</div>
+
+    <!-- Provider status chips — populated by app.js -->
+    <div id="providerStatus" style="margin-bottom:14px;">
+      <div class="field-label" style="margin-bottom:6px;">Configured Providers</div>
+      <div class="provider-chips" id="providerChips">
+        <span style="font-size:0.82rem;color:var(--sage);">Loading…</span>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <div class="field-label">LLM Family</div>
+        <select id="providerSelect" onchange="onProviderChange()">
+          <option value="">Loading providers…</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Model</div>
+        <select id="modelSelect">
+          <option value="">Select a provider first</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="info-banner" id="keyNote" style="display:none;margin-top:12px;">
+      🔒 API keys are stored in <strong>.env</strong> on the server — they are never sent to the browser.
+    </div>
+  </div>
+
+  <!-- ── Section 2: Experiment Setup ───────────────────────── -->
+  <div class="section s2">
+    <div class="section-title">⚗️ Experiment Setup</div>
+
+    <div class="form-grid">
+      <div>
+        <div class="field-label">Grade Level</div>
+        <select id="gradeSelect">
+          <option value="K-2 (Ages 5-7)">K–2 (Ages 5–7)</option>
+          <option value="3-5 (Ages 8-10)">3–5 (Ages 8–10)</option>
+          <option value="6-8 (Ages 11-14)" selected>6–8 (Ages 11–14)</option>
+          <option value="9-12 (Ages 14-18)">9–12 (Ages 14–18)</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">
+          Available Supplies
+          <span style="font-weight:400;color:var(--sage);"> (one per line)</span>
+        </div>
+        <textarea id="suppliesInput" rows="5"
+          placeholder="vinegar&#10;baking soda&#10;food coloring&#10;water&#10;dish soap"></textarea>
+      </div>
+    </div>
+
+    <div class="send-row">
+      <button class="generate-btn" id="generateBtn" onclick="generateExperiment()">
+        <div class="loading-spinner" id="loadingSpinner"></div>
+        <span class="btn-label">🔬 Generate Experiment</span>
+      </button>
+    </div>
+
+    <div class="error-panel" id="errorPanel"></div>
+  </div>
+
+  <!-- ── Section 3: Output ──────────────────────────────────── -->
+  <div class="section s3" id="outputSection" style="display:none;">
+    <div class="section-title">📋 Your Experiment</div>
+
+    <!-- Difficulty + grade + model chips -->
+    <div class="difficulty-row">
+      <span class="difficulty-badge" id="difficultyBadge"></span>
+      <span class="grade-chip" id="gradeChip"></span>
+      <span class="model-chip" id="modelChip"></span>
+    </div>
+
+    <div class="experiment-output" id="outputContent"></div>
+
+    <div class="action-row">
+      <button class="btn-secondary" onclick="downloadTxt()">⬇️ Download .txt</button>
+      <button class="btn-secondary" onclick="downloadHtml()">⬇️ Download .html</button>
+      <button class="btn-primary"   onclick="printWorksheet()">🖨️ Print Worksheet</button>
+    </div>
+  </div>
+
+  <!-- ── Section 4: History ─────────────────────────────────── -->
+  <div class="section s4">
+    <div class="history-toggle" onclick="toggleHistory()">
+      <div class="section-title" style="margin-bottom:0;">
+        🕐 Experiment History
+        <span id="historyCount" style="font-size:0.78rem;font-weight:600;color:var(--sage);text-transform:none;letter-spacing:0;"></span>
+      </div>
+      <span class="chevron" id="historyChevron">▼</span>
+    </div>
+    <div class="history-body" id="historyBody">
+      <p class="history-empty" id="historyEmpty">No experiments yet — generate one above.</p>
+      <div class="history-grid" id="historyGrid"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
