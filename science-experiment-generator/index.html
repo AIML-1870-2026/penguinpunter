@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔬 Science Experiment Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="container">
+
+  <!-- ── HEADER ─────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo">
+      🔬 Science Experiment Generator
+      <span>AI-powered hands-on experiments for K–12</span>
+    </div>
+  </header>
+
+  <!-- ── SECTION 1: API KEY SETUP ──────────────────────────────── -->
+  <div class="section s1">
+    <div class="section-title">🔑 API Key Setup</div>
+
+    <label class="upload-area" for="envUpload">
+      <input type="file" id="envUpload" accept=".env,.csv,.txt" onchange="handleFileUpload(event)">
+      📁 Upload a <strong>.env</strong> file with your OpenAI key — or type it below
+    </label>
+
+    <div class="key-label">
+      OpenAI API Key
+      <span class="key-indicator" id="keyIndicator">✓ loaded</span>
+    </div>
+    <input
+      type="password"
+      id="keyInput"
+      placeholder="sk-..."
+      oninput="handleKeyInput()"
+    >
+
+    <div class="key-clear-row">
+      <p class="privacy-notice">🔒 Key is held in memory only — cleared when you close or refresh the page.</p>
+      <button class="btn-danger" onclick="clearKey()">✕ Clear Key</button>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: EXPERIMENT SETUP ───────────────────────────── -->
+  <div class="section s2">
+    <div class="section-title">⚗️ Experiment Setup</div>
+
+    <div class="form-grid">
+      <div>
+        <div class="field-label">Grade Level</div>
+        <select id="gradeSelect">
+          <option value="K-2 (Ages 5-7)">K–2 (Ages 5–7)</option>
+          <option value="3-5 (Ages 8-10)">3–5 (Ages 8–10)</option>
+          <option value="6-8 (Ages 11-14)" selected>6–8 (Ages 11–14)</option>
+          <option value="9-12 (Ages 14-18)">9–12 (Ages 14–18)</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="field-label">Available Supplies <span style="font-weight:400;color:var(--sage);">(one per line)</span></div>
+        <textarea
+          id="suppliesInput"
+          rows="5"
+          placeholder="glue&#10;borax&#10;shaving cream&#10;food coloring&#10;water"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="send-row">
+      <button class="generate-btn" id="generateBtn" onclick="generateExperiment()">
+        <div class="loading-spinner" id="loadingSpinner"></div>
+        <span class="btn-label">🔬 Generate Experiment</span>
+      </button>
+    </div>
+
+    <div class="error-panel" id="errorPanel"></div>
+  </div>
+
+  <!-- ── SECTION 3: QUICK-ADD SUPPLIES (SC2 / SC3) ─────────────── -->
+  <div class="section s3">
+    <div class="section-title">🧴 Quick-Add Common Supplies</div>
+    <p style="font-size:0.82rem;color:var(--sage);margin-bottom:12px;">
+      Click any supply to add it to your list above.
+    </p>
+    <div class="chips-grid" id="chipsGrid">
+      <!-- Populated by app.js -->
+    </div>
+  </div>
+
+  <!-- ── SECTION 4: EXPERIMENT OUTPUT ──────────────────────────── -->
+  <div class="section s4" id="outputSection" style="display:none;">
+    <div class="section-title">📋 Your Experiment</div>
+
+    <!-- Difficulty badge (SC6) + grade chip -->
+    <div class="difficulty-row">
+      <span class="difficulty-badge" id="difficultyBadge"></span>
+      <span class="grade-chip" id="gradeChip"></span>
+    </div>
+
+    <!-- Rendered markdown (SC4: materials made clickable by app.js) -->
+    <div class="experiment-output" id="outputContent"></div>
+
+    <!-- SC4: Substitution panel -->
+    <div class="substitution-section" id="substitutionSection" style="display:none;">
+      <div class="substitution-header">
+        🔄 Substitutes for: <strong id="substitutionMaterial"></strong>
+        <button class="btn-danger" style="padding:4px 10px;font-size:0.78rem;" onclick="hideSubstitution()">✕</button>
+      </div>
+      <div class="substitution-body" id="substitutionBody"></div>
+    </div>
+
+    <!-- Hint for SC4 -->
+    <p style="font-size:0.75rem;color:var(--sage);margin-top:10px;">
+      💡 Click any item in the <strong>Materials Needed</strong> list to find substitutes.
+    </p>
+
+    <!-- Action buttons (SC5: download + print) -->
+    <div class="action-row">
+      <button class="btn-secondary" onclick="downloadTxt()">⬇️ Download .txt</button>
+      <button class="btn-secondary" onclick="downloadHtml()">⬇️ Download .html</button>
+      <button class="btn-primary" onclick="printWorksheet()">🖨️ Print Worksheet</button>
+    </div>
+  </div>
+
+  <!-- ── SECTION 5: HISTORY PANEL (SC1) ────────────────────────── -->
+  <div class="section s5">
+    <div class="history-toggle" onclick="toggleHistory()">
+      <div class="section-title" style="margin-bottom:0;">
+        🕐 Experiment History
+        <span id="historyCount" style="font-size:0.78rem;font-weight:600;color:var(--sage);text-transform:none;letter-spacing:0;"></span>
+      </div>
+      <span class="chevron" id="historyChevron">▼</span>
+    </div>
+
+    <div class="history-body" id="historyBody">
+      <p class="history-empty" id="historyEmpty">
+        No experiments yet — generate one above and it will appear here.
+      </p>
+      <div class="history-grid" id="historyGrid"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script src="app.js"></script>
+</body>
+</html>
