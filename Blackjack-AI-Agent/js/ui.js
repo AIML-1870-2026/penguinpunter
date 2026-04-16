@@ -9,6 +9,7 @@ const UI = (() => {
 
   function init() {
     setupEnvUpload();
+    setupKeyInputs();
     setupProviderPills();
     setupModelSelect();
     setupRiskPills();
@@ -19,6 +20,38 @@ const UI = (() => {
     updateBalanceDisplay();
   }
 
+  // ── KEY INPUTS ──────────────────────────────────────────────────────────────
+  function setupKeyInputs() {
+    const map = { openaiKeyInput: 'openai', anthropicKeyInput: 'anthropic' };
+    Object.entries(map).forEach(([id, provider]) => {
+      const input = document.getElementById(id);
+      input.addEventListener('input', () => {
+        EnvParser.setKey(provider, input.value);
+        input.classList.toggle('has-value', !!input.value.trim());
+        updateKeyStatus();
+      });
+    });
+  }
+
+  function updateKeyStatus() {
+    const status = document.getElementById('keyStatus');
+    const hasOAI = EnvParser.hasKey('openai');
+    const hasAnt = EnvParser.hasKey('anthropic');
+    if (hasOAI || hasAnt) {
+      const names = [hasOAI ? 'OpenAI' : null, hasAnt ? 'Anthropic' : null].filter(Boolean);
+      status.textContent = '✓ ' + names.join(' & ') + ' loaded';
+      status.className = 'key-status loaded';
+    } else {
+      status.textContent = 'No key loaded';
+      status.className = 'key-status';
+    }
+  }
+
+  function toggleKeyVisibility(btn) {
+    const input = document.getElementById(btn.dataset.target);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
   // ── ENV UPLOAD ──────────────────────────────────────────────────────────────
   function setupEnvUpload() {
     document.getElementById('envUpload').addEventListener('change', e => {
@@ -27,20 +60,26 @@ const UI = (() => {
       const reader = new FileReader();
       reader.onload = ev => {
         const result = EnvParser.parseEnvFile(ev.target.result);
-        const status = document.getElementById('keyStatus');
+        // Sync text inputs with parsed keys
+        if (result.hasOpenAI) {
+          const inp = document.getElementById('openaiKeyInput');
+          inp.value = EnvParser.getKey('openai');
+          inp.classList.add('has-value');
+        }
+        if (result.hasAnthropic) {
+          const inp = document.getElementById('anthropicKeyInput');
+          inp.value = EnvParser.getKey('anthropic');
+          inp.classList.add('has-value');
+        }
         if (result.hasOpenAI || result.hasAnthropic) {
-          const names = [result.hasOpenAI ? 'OpenAI' : null, result.hasAnthropic ? 'Anthropic' : null].filter(Boolean);
-          status.textContent = '✓ ' + names.join(' & ') + ' key loaded';
-          status.className = 'key-status loaded';
-          // Switch to the provider that was loaded if current one isn't available
           if (!EnvParser.hasKey(currentProvider)) {
-            const fallback = result.hasOpenAI ? 'openai' : 'anthropic';
-            setProvider(fallback);
+            setProvider(result.hasOpenAI ? 'openai' : 'anthropic');
           }
         } else {
-          status.textContent = '✗ No key found in file';
-          status.className = 'key-status error';
+          document.getElementById('keyStatus').textContent = '✗ No key found in file';
+          document.getElementById('keyStatus').className = 'key-status error';
         }
+        updateKeyStatus();
       };
       reader.readAsText(file);
     });
@@ -472,7 +511,7 @@ const UI = (() => {
     renderStrategyChart(null);
   }
 
-  return { init, resetGame };
+  return { init, resetGame, toggleKeyVisibility };
 })();
 
 window.addEventListener('DOMContentLoaded', UI.init);

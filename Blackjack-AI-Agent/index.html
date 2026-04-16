@@ -36,6 +36,25 @@
     </div>
   </header>
 
+  <!-- API KEY INPUTS -->
+  <div class="keys-bar">
+    <div class="key-input-group">
+      <label class="key-input-label" for="openaiKeyInput">OpenAI Key</label>
+      <div class="key-input-wrap">
+        <input type="password" id="openaiKeyInput" placeholder="sk-..." autocomplete="off" spellcheck="false">
+        <button class="key-eye-btn" data-target="openaiKeyInput" onclick="UI.toggleKeyVisibility(this)" title="Show/hide key">👁</button>
+      </div>
+    </div>
+    <div class="key-input-group">
+      <label class="key-input-label" for="anthropicKeyInput">Anthropic Key</label>
+      <div class="key-input-wrap">
+        <input type="password" id="anthropicKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+        <button class="key-eye-btn" data-target="anthropicKeyInput" onclick="UI.toggleKeyVisibility(this)" title="Show/hide key">👁</button>
+      </div>
+    </div>
+    <p class="keys-bar-note">🔒 Keys are held in memory only — never stored or sent anywhere except the LLM provider.</p>
+  </div>
+
   <main class="main">
 
     <!-- LEFT COLUMN: Game + AI Panel -->

@@ -9,10 +9,11 @@ const EnvParser = (() => {
     return { hasOpenAI: !!oai, hasAnthropic: !!ant };
   }
 
+  function setKey(provider, value) { apiKeys[provider] = value.trim(); }
   function getKey(provider) { return apiKeys[provider] || ''; }
   function hasKey(provider) { return !!apiKeys[provider]; }
   function hasAnyKey() { return !!(apiKeys.openai || apiKeys.anthropic); }
   function clearKeys() { apiKeys = { openai: '', anthropic: '' }; }
 
-  return { parseEnvFile, getKey, hasKey, hasAnyKey, clearKeys };
+  return { parseEnvFile, setKey, getKey, hasKey, hasAnyKey, clearKeys };
 })();

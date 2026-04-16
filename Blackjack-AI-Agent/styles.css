@@ -179,6 +179,78 @@ select {
 select:focus { border-color: var(--orange); }
 select option { background: #1e0f2e; }
 
+/* ── KEYS BAR ────────────────────────────────────────────────────────────────── */
+.keys-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+
+.key-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.key-input-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.key-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.key-input-wrap input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Inter', monospace, system-ui;
+  font-size: 0.83rem;
+  padding: 8px 36px 8px 10px;
+  outline: none;
+  transition: border-color 0.18s;
+}
+.key-input-wrap input:focus { border-color: var(--orange); }
+.key-input-wrap input.has-value { border-color: #84c98a; }
+
+.key-eye-btn {
+  position: absolute;
+  right: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 4px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+.key-eye-btn:hover { opacity: 1; }
+
+.keys-bar-note {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 160px;
+  line-height: 1.5;
+}
+
 /* ── MAIN LAYOUT ──────────────────────────────────────────────────────────────── */
 .main {
   display: grid;
