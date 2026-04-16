@@ -295,6 +295,8 @@ select option { background: #1e0f2e; }
   background: linear-gradient(180deg, #C8EDDA 0%, #B8E8CC 100%);
   border-color: rgba(180,220,200,0.8);
   padding: 24px;
+  position: relative;
+  overflow: hidden;
 }
 
 .dealer-section, .player-section {
@@ -516,11 +518,90 @@ select option { background: #1e0f2e; }
 /* ── STATUS MESSAGE ───────────────────────────────────────────────────────────── */
 .status-message {
   margin-top: 14px;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   color: var(--text-dim);
-  min-height: 22px;
+  min-height: 24px;
   font-style: italic;
+  transition: all 0.2s;
 }
+.status-message.result-win  { color: #2e7d32; font-style: normal; font-weight: 700; }
+.status-message.result-blackjack { color: #b8860b; font-style: normal; font-weight: 700; }
+.status-message.result-lose { color: #c62828; font-style: normal; font-weight: 700; }
+.status-message.result-push { color: #6a1b9a; font-style: normal; font-weight: 700; }
+
+/* ── RESULT BANNER ────────────────────────────────────────────────────────────── */
+.result-banner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.result-banner-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 40px;
+  border-radius: 18px;
+  text-align: center;
+  animation: bannerPop 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+}
+@keyframes bannerPop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.result-banner-inner.banner-hide {
+  animation: bannerFade 0.4s ease forwards;
+}
+@keyframes bannerFade {
+  from { transform: scale(1);    opacity: 1; }
+  to   { transform: scale(1.05); opacity: 0; }
+}
+
+.result-banner-inner.banner-win {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border: 2.5px solid #66bb6a;
+}
+.result-banner-inner.banner-blackjack {
+  background: linear-gradient(135deg, #fffde7, #fff9c4);
+  border: 2.5px solid #ffd54f;
+}
+.result-banner-inner.banner-lose {
+  background: linear-gradient(135deg, #ffebee, #ffcdd2);
+  border: 2.5px solid #ef9a9a;
+}
+.result-banner-inner.banner-push {
+  background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+  border: 2.5px solid #ce93d8;
+}
+
+.result-banner-icon { font-size: 2.8rem; line-height: 1; }
+.result-banner-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.banner-win .result-banner-text    { color: #1b5e20; }
+.banner-blackjack .result-banner-text { color: #7a5800; }
+.banner-lose .result-banner-text   { color: #b71c1c; }
+.banner-push .result-banner-text   { color: #4a148c; }
+
+.result-banner-sub {
+  font-size: 0.88rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+.banner-win .result-banner-sub    { color: #2e7d32; }
+.banner-blackjack .result-banner-sub { color: #8a6500; }
+.banner-lose .result-banner-sub   { color: #c62828; }
+.banner-push .result-banner-sub   { color: #6a1b9a; }
 
 /* ── AI PANEL ─────────────────────────────────────────────────────────────────── */
 .ai-panel { border-color: var(--border-pink); }

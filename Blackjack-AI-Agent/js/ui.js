@@ -166,6 +166,7 @@ const UI = (() => {
     const bet = parseInt(document.getElementById('betInput').value) || 0;
     if (bet <= 0) { setStatus('Enter a valid bet amount.'); return; }
     if (bet > Blackjack.getBalance()) { setStatus('Bet exceeds balance.'); return; }
+    document.getElementById('statusMessage').className = 'status-message';
 
     pendingRecommendation = null;
     document.getElementById('executeBtn').disabled = true;
@@ -304,14 +305,13 @@ const UI = (() => {
     renderAnalytics();
     renderGameState();
 
-    const msgs = {
-      win: '🎉 You win!',
-      lose: '😔 Dealer wins.',
-      push: '🤝 Push — bet returned.',
-      blackjack: '🃏 Blackjack! 1.5× payout!',
-    };
-    const resultMsg = state.handResults.map(r => msgs[r] || r).join('  ');
-    setStatus(resultMsg);
+    const primary = state.handResults[0] || 'push';
+    showResultBanner(primary, state.handBets[0] || state.currentBet);
+
+    const statusMsgs = { win: '🎉 You win!', lose: '😔 Dealer wins.', push: '🤝 Push — bet returned.', blackjack: '🃏 Blackjack! 1.5× payout!' };
+    const statusEl = document.getElementById('statusMessage');
+    statusEl.textContent = state.handResults.map(r => statusMsgs[r] || r).join('  ');
+    statusEl.className = 'status-message result-' + primary;
 
     document.getElementById('dealBtn').disabled = false;
     document.getElementById('betInput').disabled = false;
@@ -488,6 +488,30 @@ const UI = (() => {
     Analytics.renderBankrollChart(document.getElementById('bankrollChart'));
   }
 
+  // ── RESULT BANNER ────────────────────────────────────────────────────────────
+  function showResultBanner(result, bet) {
+    const configs = {
+      win:       { icon: '🎉', text: 'You Win!',      sub: '+$' + bet,              cls: 'banner-win' },
+      blackjack: { icon: '🃏', text: 'Blackjack!',    sub: '+$' + Math.floor(bet * 1.5), cls: 'banner-blackjack' },
+      lose:      { icon: '😔', text: 'Dealer Wins',   sub: '-$' + bet,              cls: 'banner-lose' },
+      push:      { icon: '🤝', text: 'Push',          sub: 'Bet returned',          cls: 'banner-push' },
+    };
+    const cfg = configs[result] || configs.push;
+    const banner = document.getElementById('resultBanner');
+    const inner  = document.getElementById('resultBannerInner');
+    document.getElementById('resultBannerIcon').textContent = cfg.icon;
+    document.getElementById('resultBannerText').textContent = cfg.text;
+    document.getElementById('resultBannerSub').textContent  = cfg.sub;
+    inner.className = 'result-banner-inner ' + cfg.cls;
+    banner.style.display = 'flex';
+
+    clearTimeout(UI._bannerTimer);
+    UI._bannerTimer = setTimeout(() => {
+      inner.classList.add('banner-hide');
+      setTimeout(() => { banner.style.display = 'none'; inner.classList.remove('banner-hide'); }, 400);
+    }, 1600);
+  }
+
   // ── RESET ──────────────────────────────────────────────────────────────────────
   function resetGame() {
     Blackjack.resetBalance();
@@ -511,7 +535,7 @@ const UI = (() => {
     renderStrategyChart(null);
   }
 
-  return { init, resetGame, toggleKeyVisibility };
+  return { init, resetGame, toggleKeyVisibility, _bannerTimer: null };
 })();
 
 window.addEventListener('DOMContentLoaded', UI.init);
