@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackjack AI Agent</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <h1 class="title">🃏 Blackjack AI Agent</h1>
+      <p class="subtitle">LLM-Powered Strategy Advisor</p>
+    </div>
+    <div class="header-right">
+      <div class="env-section">
+        <label class="upload-btn" for="envUpload">
+          <input type="file" id="envUpload" accept=".env,.txt,.csv">
+          📁 Upload .env
+        </label>
+        <span class="key-status" id="keyStatus">No key loaded</span>
+      </div>
+      <div class="model-section">
+        <div class="pill-group" id="providerPills">
+          <button class="pill active" data-provider="openai">OpenAI</button>
+          <button class="pill" data-provider="anthropic">Anthropic</button>
+        </div>
+        <select id="modelSelect"></select>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- LEFT COLUMN: Game + AI Panel -->
+    <div class="left-col">
+
+      <!-- GAME TABLE -->
+      <div class="game-table">
+
+        <div class="dealer-section">
+          <div class="section-label">🤖 Dealer</div>
+          <div class="cards-row" id="dealerCards"></div>
+          <div class="score-display" id="dealerScore">--</div>
+        </div>
+
+        <div class="divider">⬡ &nbsp; ⬡ &nbsp; ⬡</div>
+
+        <div class="player-section">
+          <div class="section-label">You</div>
+          <div class="hands-container" id="handsContainer"></div>
+          <div class="score-display" id="playerScore">--</div>
+        </div>
+
+        <div class="bet-row">
+          <label class="bet-label" for="betInput">
+            Bet: $<input type="number" id="betInput" value="10" min="1" max="1000">
+          </label>
+          <span class="balance-display">Balance: $<span id="balanceDisplay">1000</span></span>
+          <button class="btn-deal" id="dealBtn">🃏 Deal</button>
+        </div>
+
+        <div class="action-buttons" id="actionButtons">
+          <button class="btn-action" id="hitBtn" disabled>Hit</button>
+          <button class="btn-action" id="standBtn" disabled>Stand</button>
+          <button class="btn-action" id="doubleBtn" disabled>Double</button>
+          <button class="btn-action" id="splitBtn" disabled>Split</button>
+          <button class="btn-action btn-insurance" id="insuranceBtn" style="display:none">Take Insurance</button>
+          <button class="btn-action btn-no-insurance" id="noInsuranceBtn" style="display:none">No Insurance</button>
+        </div>
+
+        <div class="status-message" id="statusMessage">Place your bet and click Deal to begin.</div>
+      </div>
+
+      <!-- AI AGENT PANEL -->
+      <div class="ai-panel">
+        <div class="panel-title">🤖 AI Agent Recommendation</div>
+
+        <div class="controls-row">
+          <div class="control-group">
+            <div class="control-label">Risk Tolerance</div>
+            <div class="pill-group" id="riskPills">
+              <button class="pill" data-risk="conservative">Conservative</button>
+              <button class="pill active" data-risk="balanced">Balanced</button>
+              <button class="pill" data-risk="aggressive">Aggressive</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Explanation Level</div>
+            <div class="pill-group" id="explanationPills">
+              <button class="pill active" data-level="basic">Basic</button>
+              <button class="pill" data-level="statistical">Statistical</button>
+              <button class="pill" data-level="indepth">In-depth</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="recommendation-box" id="recommendationBox">
+          <div class="rec-action" id="recAction">—</div>
+          <div class="rec-loading" id="recLoading" style="display:none">
+            <div class="spinner"></div> Consulting AI...
+          </div>
+          <div class="rec-text" id="recText">Waiting for a hand to begin...</div>
+        </div>
+
+        <button class="btn-execute" id="executeBtn" disabled>⚡ Execute Recommendation</button>
+      </div>
+
+    </div><!-- /left-col -->
+
+    <!-- RIGHT COLUMN: Strategy Chart + Analytics -->
+    <div class="right-col">
+
+      <!-- BASIC STRATEGY CHART -->
+      <div class="strategy-panel">
+        <div class="panel-title">📊 Basic Strategy Chart</div>
+        <div class="strategy-tabs">
+          <button class="strat-tab active" data-chart="hard">Hard Totals</button>
+          <button class="strat-tab" data-chart="soft">Soft Totals</button>
+          <button class="strat-tab" data-chart="pairs">Pairs</button>
+        </div>
+        <div class="strategy-chart-container" id="strategyChart"></div>
+        <div class="legend-row" style="margin-top:8px;">
+          <span class="legend-item hit">H = Hit</span>
+          <span class="legend-item stand">S = Stand</span>
+          <span class="legend-item double">D = Double</span>
+          <span class="legend-item split">P = Split</span>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="analytics-panel">
+        <div class="panel-title">📈 Session Analytics</div>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card"><div class="stat-val" id="statWins">0</div><div class="stat-lbl">Wins</div></div>
+          <div class="stat-card"><div class="stat-val" id="statLosses">0</div><div class="stat-lbl">Losses</div></div>
+          <div class="stat-card"><div class="stat-val" id="statPushes">0</div><div class="stat-lbl">Pushes</div></div>
+          <div class="stat-card"><div class="stat-val" id="statWinRate">—</div><div class="stat-lbl">Win Rate</div></div>
+          <div class="stat-card"><div class="stat-val" id="statLLMAccuracy">—</div><div class="stat-lbl">AI Accuracy</div></div>
+          <div class="stat-card"><div class="stat-val" id="statBigWin">—</div><div class="stat-lbl">Biggest Win</div></div>
+        </div>
+        <div class="chart-container">
+          <div class="chart-label">Bankroll Over Time</div>
+          <svg id="bankrollChart" class="bankroll-svg" viewBox="0 0 400 120" preserveAspectRatio="none">
+            <text x="200" y="65" text-anchor="middle" fill="rgba(255,249,245,0.3)" font-size="12">Play some hands to see your bankroll history</text>
+          </svg>
+        </div>
+      </div>
+
+    </div><!-- /right-col -->
+
+  </main>
+</div><!-- /app -->
+
+<!-- GAME OVER MODAL -->
+<div class="modal-overlay" id="gameOverModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">Game Over</div>
+    <div class="modal-text">You're out of chips! The house wins this time.</div>
+    <button class="btn-primary" onclick="UI.resetGame()">Start Over ($1,000)</button>
+  </div>
+</div>
+
+<!-- BACKGROUND ANIMATION -->
+<script>
+(function() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const SUITS = ['♠', '♥', '♦', '♣'];
+  const COLORS = [
+    'rgba(255,107,53,0.18)', 'rgba(233,30,140,0.15)',
+    'rgba(255,143,94,0.12)', 'rgba(255,77,184,0.14)'
+  ];
+
+  function makeParticle() {
+    return {
+      x: Math.random() * canvas.width,
+      y: canvas.height + 30,
+      suit: SUITS[Math.floor(Math.random() * 4)],
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      size: 14 + Math.random() * 22,
+      speed: 0.25 + Math.random() * 0.4,
+      drift: (Math.random() - 0.5) * 0.4,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.015,
+      opacity: 0.1 + Math.random() * 0.25,
+    };
+  }
+
+  let particles = Array.from({ length: 12 }, makeParticle);
+  particles.forEach(p => { p.y = Math.random() * canvas.height; });
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach((p, i) => {
+      p.y -= p.speed;
+      p.x += p.drift;
+      p.rotation += p.rotSpeed;
+      if (p.y < -40) particles[i] = makeParticle();
+      ctx.save();
+      ctx.globalAlpha = p.opacity;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.font = `${p.size}px serif`;
+      ctx.fillStyle = p.color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.suit, 0, 0);
+      ctx.restore();
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+</script>
+
+<script src="js/env.js"></script>
+<script src="js/blackjack.js"></script>
+<script src="js/llm.js"></script>
+<script src="js/strategy.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/agent.js"></script>
+<script src="js/ui.js"></script>
+
+</body>
+</html>
