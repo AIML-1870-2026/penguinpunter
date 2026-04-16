@@ -109,7 +109,7 @@ const Strategy = (() => {
   }
 
   const DEALER_LABELS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A'];
-  const ACTION_COLORS = { H: '#ff6b35', S: '#c2185b', D: '#1565c0', P: '#6a1b9a', d: '#1565c0' };
+  const ACTION_COLORS = { H: '#FFAA8A', S: '#F4A7C0', D: '#A8C8F0', P: '#C8A8F0', d: '#A8C8F0' };
   const ACTION_LABELS = { H: 'H', S: 'S', D: 'D', P: 'P', d: 'D', s: 'S' };
 
   function renderChart(chartType, activeState) {

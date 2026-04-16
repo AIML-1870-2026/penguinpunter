@@ -64,19 +64,19 @@ const Analytics = (() => {
     svgEl.innerHTML = `
       <defs>
         <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.4"/>
-          <stop offset="100%" stop-color="#e91e8c" stop-opacity="0.05"/>
+          <stop offset="0%" stop-color="#FFAA8A" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#F4A7C0" stop-opacity="0.05"/>
         </linearGradient>
       </defs>
       <polygon points="${areaPoints}" fill="url(#chartGrad)"/>
       <polyline points="${points}" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       <defs>
         <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#ff6b35"/>
-          <stop offset="100%" stop-color="#e91e8c"/>
+          <stop offset="0%" stop-color="#FFAA8A"/>
+          <stop offset="100%" stop-color="#F4A7C0"/>
         </linearGradient>
       </defs>
-      <text x="${W - PAD}" y="${py(hist[hist.length - 1]) - 6}" text-anchor="end" fill="#ff6b35" font-size="11" font-weight="bold">$${hist[hist.length-1]}</text>
+      <text x="${W - PAD}" y="${py(hist[hist.length - 1]) - 6}" text-anchor="end" fill="#FF9472" font-size="11" font-weight="bold">$${hist[hist.length-1]}</text>
     `;
   }
 
